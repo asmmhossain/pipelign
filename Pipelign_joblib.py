@@ -523,7 +523,7 @@ def drawAsciiTree(treeFile):
 
 def alnLongSequenceClustersParallel(nClusters,thread,mIterL,cDir,tName,zName):
   '''
-    - align long sequence cluster files in parallel using MPI 
+    - align long sequence cluster files in parallel using joblib 
   '''
   
   log = 'align.log'
@@ -676,7 +676,7 @@ def buildHMMdb(nClusters):
 
 #***********************************************************************
 
-def makeHMMdb(nClusters,thread,alphabet,log,cDir,tName,zName):
+def makeHMMdbParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
   '''
     - builds HMM from long sequence clusters
     - builds the database from HMMs
@@ -1398,7 +1398,7 @@ if __name__=="__main__":
   alnLongSequenceClustersParallel(numClusters,mArgs.thread,mArgs.mIterL,cDir,tFileName,zName) 
   
   # make HMMs and database from cluster alignments
-  makeHMMdb(numClusters,mArgs.thread,mArgs.alphabet,'hmmer.log',cDir,tFileName,zName)
+  makeHMMdbParallel(numClusters,mArgs.thread,mArgs.alphabet,'hmmer.log',cDir,tFileName,zName)
   
   # only create long sequence alignments and HMMs
   if mArgs.stage == 1:
