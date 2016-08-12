@@ -79,6 +79,22 @@ def cZip(cDir,tName,zName):
 
 #******************************************
 
+def concatLogFiles(original,newLog):
+  '''
+    Concatenates two log files 
+  '''
+  
+  lh = open(original,'a')
+  
+  with open(newLog,'rU') as f:
+    for line in f:
+      lh.write(line)
+  
+  lh.close()
+  
+
+#******************************************
+
 def linsi(seqFile,alnFile,thread,mIterLong,log,cDir,tName,zName,p=None):
   '''
     - aligns sequences using MAFFT's L-INS-i method
@@ -86,10 +102,10 @@ def linsi(seqFile,alnFile,thread,mIterLong,log,cDir,tName,zName,p=None):
   
   if p:
     lName = log + '.' + str(p)
-    lh = open(lName,'a')
   else:
-    lh = open(log,'a')
+    lName = log + '.temp'
   
+  lh = open(lName,'a')
   ah = open(alnFile,'w')
   
   cl = ['mafft', '--localpair', '--thread', str(thread), '--maxiterate', str(mIterLong), '--preservecase', seqFile]
@@ -105,18 +121,23 @@ def linsi(seqFile,alnFile,thread,mIterLong,log,cDir,tName,zName,p=None):
   lh.close()
   ah.close()
   
+  if not p:
+    concatLogFiles('pipelign.log',lName)  
+    os.remove(lName)
+
 #***********************************************************************
 
 def fftnsi(seqFile,alnFile,thread,mIterLong,log,cDir,tName,zName,p=None):
   '''
     - aligns sequences using MAFFT's FFT-NS-i method
   '''
+
   if p:
     lName = log + '.' + str(p)
-    lh = open(lName,'a')
   else:
-    lh = open(log,'a')
+    lName = log + '.temp'
   
+  lh = open(lName,'a')
   ah = open(alnFile,'w')
   
   cl = ['mafft', '--thread', str(thread), '--maxiterate', str(mIterLong), '--preservecase', seqFile]
@@ -132,6 +153,10 @@ def fftnsi(seqFile,alnFile,thread,mIterLong,log,cDir,tName,zName,p=None):
   lh.close()
   ah.close()
 
+  if not p:
+    concatLogFiles('pipelign.log',lName)  
+    os.remove(lName)
+
 #***********************************************************************
 
 def checkPresenceOfFile(fName):
@@ -141,11 +166,10 @@ def checkPresenceOfFile(fName):
   '''
    
   if not os.path.exists(fName) or os.stat(fName).st_size == 0:
-      msg = '\nError: the file <%s>  could not be found in the given path' % fName
-      msg += '\n**Please check the name and the path of the file**'
-      msg += '\n\nPipelign is exiting\n'
-      sys.exit(msg)
-
+      return False
+  
+  return True
+  
 #************************************************************************
 
 def checkMPI():
@@ -316,7 +340,7 @@ def runCDHIT(longName,alphabet,per,thread,cDir,tName,zName):
   msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
   
   # open log file
-  lh = open('pipelign.log','a') 
+  lh = open('cdhit.log','a') 
   
   # argument string for CD-HIT
   if alphabet == 'dna' or alphabet == 'rna':
@@ -341,6 +365,9 @@ def runCDHIT(longName,alphabet,per,thread,cDir,tName,zName):
   msg += ' CD-HIT finished. Files created: <grp> and <grp.clstr>\n'
   print(msg)
 
+  concatLogFiles('pipelign.log','cdhit.log')
+  os.remove('cdhit.log')
+  
 #*************************************************************************
 
 def makeClusters(longName,cName):
@@ -416,7 +443,7 @@ def makeClusters(longName,cName):
   
   if cls > 0:
     msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
-    msg += ' %d cluster file(s) created. File names <long.0.fas>, <long.1.fas>, ..., <long.xx.fas> \n' % cls
+    msg += ' %d cluster file(s) created. File names: <long.x.fas>\n' % cls
     print(msg)
   else:
     msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
@@ -473,7 +500,7 @@ def makeIQTree(alnFile,thread,cDir,tName,zName,alpha):
     - Constructs phylogenetic tree using IQ-TREE
   '''
   
-  lh = open('pipelign.log','a')
+  lh = open('tree.log','a')
   
   #print('\nCreating IQ-TREE from %s' % alnFile)
   
@@ -490,6 +517,9 @@ def makeIQTree(alnFile,thread,cDir,tName,zName,alpha):
     cZip(cDir,tName,zName)
   
   lh.close()
+  
+  concatLogFiles('pipelign.log','tree.log')
+  os.remove('tree.log')
   
 #***********************************************************************
 
@@ -569,9 +599,10 @@ def buildHMM(aName,hName,thread,alphabet,log,cDir,tName,zName,p=None):
   
   if p:
     lName = log + '.' + str(p)
-    lh = open(lName,'a')
   else:
-    lh = open(log,'a')
+    lName = log + '.temp'
+  
+  lh = open(lName,'a')
   
   gName = aName + '.temp'
   # create a temporary file to hold the alignment to build HMM  
@@ -644,6 +675,12 @@ def buildHMM(aName,hName,thread,alphabet,log,cDir,tName,zName,p=None):
   except OSError as e:
     print(e)
     cZip(cDir,tName,zName)
+  
+  lh.close()  
+  
+  if not p:
+    concatLogFiles('pipelign.log',lName)
+    os.remove(lName)
     
 #***********************************************************************
 
@@ -664,7 +701,7 @@ def buildHMMdb(nClusters):
   # create HMM database
   cl = ['hmmpress', dbName]
   
-  lh = open('pipelign.log','a')
+  lh = open('buildhmm.log','a')
   
   # run command
   try:
@@ -673,7 +710,12 @@ def buildHMMdb(nClusters):
     #sys.exit(e)
     print(e)
     cZip(cDir,tName)
-
+  
+  lh.close()
+  
+  concatLogFiles('pipelign.log','buildhmm.log')
+  os.remove('buildhmm.log')
+  
 #***********************************************************************
 
 def makeHMMdbParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
@@ -716,10 +758,10 @@ def addFragments(fName,aName,oName,thread,mIterL,log,cDir,tName,zName,p=None):
 
   if p:
     lName = log + '.' + str(p)
-    lh = open(lName,'w')
   else:
-    lh = open(log,'a')
+    lName = log + '.temp'
   
+  lh = open(lName,'a')
   ah = open(oName,'w')
   
   cl = ['mafft', '--preservecase', '--thread', str(thread), '--maxiterate', str(mIterL), '--addfragments', fName, aName]
@@ -735,6 +777,10 @@ def addFragments(fName,aName,oName,thread,mIterL,log,cDir,tName,zName,p=None):
   lh.close()
   ah.close()
 
+  if not p:
+    concatLogFiles('pipelign.log',lName)
+    os.remove(lName)
+    
 #***********************************************************************
 
 def addLongSeqs(sName,aName,oName,thread,mIterL,log,cDir,tName,zName):
@@ -742,7 +788,9 @@ def addLongSeqs(sName,aName,oName,thread,mIterL,log,cDir,tName,zName):
     - add long sequences to the alignment using MAFFT's --addfull
   '''
 
-  lh = open(log,'a')
+  lName = log + '.temp'
+  
+  lh = open(lName,'a')
   ah = open(oName,'w')
   
   cl = ['mafft', '--preservecase', '--thread', str(thread), '--maxiterate', str(mIterL), '--addfull', sName, aName]
@@ -758,18 +806,26 @@ def addLongSeqs(sName,aName,oName,thread,mIterL,log,cDir,tName,zName):
   lh.close()
   ah.close()
 
+  concatLogFiles(log,lName)
+  os.remove(lName)
   
 #***********************************************************************
 
 def mergeLongClusters(numClusters,outFile,thread,mIterM,cDir,tName,zName):
   '''
-    - merges long sequence clusters <long.0.aln>, <long.1.aln>, ..., <long.xx.aln>
+    - merges long sequence clusters <long.x.aln>
     - creates output alignment out.aln
   '''
   
+  bFile = 'long.bad.fas'
+  
   # only one cluster 
   if numClusters == 1:
-    copyFile('long.0.aln',outFile)
+    if checkPresenceOfFile(bFile):
+      addLongSeqs(bFile,'long.0.aln','final.aln',thread,mIterM,'pipelign.log',cDir,tName,zName)
+      copyFile('final.aln',outFile)
+    else:
+      copyFile('long.0.aln',outFile)
     return
     
   elif numClusters > 1: # more than one cluster
@@ -797,6 +853,14 @@ def mergeLongClusters(numClusters,outFile,thread,mIterM,cDir,tName,zName):
       else: # only one sequence in the cluster
         oLSeqs.append(seqs[0]) # add to singles sequence list
     
+    # add bad long sequences into the singles file list
+    if checkPresenceOfFile(bFile):
+      handle = open(bFile,'r')
+      for seq in SeqIO.parse(handle,'fasta'):
+        oLSeqs.append(seq)
+      
+      handle.close()
+    
     # write single sequences into a file
     if len(oLSeqs) > 0: 
       SeqIO.write(oLSeqs,'longSingles.fas','fasta') 
@@ -809,7 +873,7 @@ def mergeLongClusters(numClusters,outFile,thread,mIterM,cDir,tName,zName):
       if len(oLSeqs) > 1: # check list is not empty
         cl = ['mafft', '--preservecase', '--thread', str(thread), '--localpair', '--maxiterate', str(mIterM), 'longSingles.fas'] 
         
-        lh = open('pipelign.log','a')
+        lh = open('mergeLong.log','a')
         ah = open('final.aln','w')
         
         try:
@@ -820,6 +884,9 @@ def mergeLongClusters(numClusters,outFile,thread,mIterM,cDir,tName,zName):
         
         lh.close()
         ah.close()    
+        
+        concatLogFiles('pipelign.log','mergeLong.log')
+        os.remove('mergeLong.log')
                
       copyFile('final.aln',outFile)
       return  
@@ -829,11 +896,11 @@ def mergeLongClusters(numClusters,outFile,thread,mIterM,cDir,tName,zName):
       sName = 'long.' + str(clsInd) + '.aln'
       
       addLongSeqs('longSingles.fas',sName,'final.aln',thread,mIterM,'pipelign.log',cDir,tName,zName) 
-      
+      copyFile('final.aln',outFile)
       return
     
     if mFlag > 1: # at least two multiple sequence alignment 
-      lh = open('pipelign.log','a')
+      lh = open('mergeLong.log','a')
       mh = open('merge','w')
       
       try: # create the input sequence file
@@ -847,6 +914,9 @@ def mergeLongClusters(numClusters,outFile,thread,mIterM,cDir,tName,zName):
       lh.close()
       mh.close()
       
+      concatLogFiles('pipelign.log','mergeLong.log')
+      os.remove('mergeLong.log')
+      
       # write subMSAtable
       fh = open('subMSAtable','w')
       fh.write(mTab)
@@ -859,7 +929,7 @@ def mergeLongClusters(numClusters,outFile,thread,mIterM,cDir,tName,zName):
       else: # more than 100 sequences, use FFT-NS-i 
         cl = ['mafft', '--preservecase', '--thread', str(thread), '--maxiterate', str(mIterM), '--merge', 'subMSAtable', 'merge']
       
-      lh = open('pipelign.log','a')
+      lh = open('mergeLong.log','a')
       ah = open('final.aln','w')
         
       try: # create the input sequence file
@@ -870,6 +940,9 @@ def mergeLongClusters(numClusters,outFile,thread,mIterM,cDir,tName,zName):
       
       lh.close()
       ah.close()
+      
+      concatLogFiles('pipelign.log','mergeLong.log')
+      os.remove('mergeLong.log')
   
       copyFile('final.aln',outFile)
       return
@@ -883,7 +956,8 @@ def runBlast(log):
     - assign clusters to fragments and writes into file <frags.ClusterList.txt> 
   '''
   # first create blast database of cluster reps
-  bl = open(log,'a')
+  bName = log + '.temp'
+  bl = open(bName,'a')
 
   cStr = 'makeblastdb -in clsReps.fas -input_type fasta -title pipelign -dbtype '
   if mArgs.alphabet in ['dna','rna']:
@@ -944,6 +1018,11 @@ def runBlast(log):
   fh.write(st)
   fh.close()  
   
+  bl.close()
+  
+  concatLogFiles('pipelign.log',bName)
+  os.remove(bName)
+  
   return mids  
   
 #************************************************************************
@@ -953,7 +1032,8 @@ def searchHMMdb(log,thread,alpha,res,cDir,tName,zName):
     HMM database is searched with the fragments to assign them a cliuster for alignment
   '''  
   
-  lh = open(log,'a')
+  lName = log + '.temp'
+  lh = open(lName,'a')
   
   # generate the command for HMM search
   if alpha == 'dna' or alpha == 'rna':
@@ -974,6 +1054,9 @@ def searchHMMdb(log,thread,alpha,res,cDir,tName,zName):
     cZip(cDir,tName,zName)
   
   lh.close()
+  
+  concatLogFiles('pipelign.log',lName)
+  os.remove(lName)
 
 #**********************************************************************
 
@@ -1128,15 +1211,22 @@ def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outF
     This will merge all the cluster alignments with long sequecnes and fragments
   '''
   
+  bFile = 'long.bad.fas'
+  
   # a single cluster alignment
   if numClusters == 1:
+    # bad sequences present
+    if checkPresenceOfFile(bFile):
+      addLongSeqs(bFile,'cls.0.aln','final.temp.aln',thread,mIterM,'pipelign.log',cDir,tName,zName)
+    else:
+      copyFile('cls.0.aln','final.temp.aln')  
+    
     # all fragments are assigned clusters
     if allAssigned: 
-      copyFile('cls.0.aln','final.aln')
-    
+      copyFile('final.temp.aln','final.aln')    
     # not all fragments are assigned and some orphans need to be aligned
     else: 
-      addFragments('frag.noClusters.fas','cls.0.aln','final.aln',thread,mIterM,'pipelign.log',cDir,tName, zName)
+      addFragments('frag.noClusters.fas','final.temp.aln','final.aln',thread,mIterM,'pipelign.log',cDir,tName, zName)
       
     copyFile('final.aln',outFile)
     return
@@ -1165,6 +1255,14 @@ def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outF
       else:
         oSeqs.append(seqs[0]) # add to long orphan file if only sequence in the cluster    
     
+    # add bad long sequences into the singles file list
+    if checkPresenceOfFile(bFile):
+      handle = open(bFile,'r')
+      for seq in SeqIO.parse(handle,'fasta'):
+        oSeqs.append(seq)
+      
+      handle.close()
+        
     if not allAssigned:
       # add orphan sequences to oSeqs list
       nSeqs = list(SeqIO.parse('frag.noClusters.fas','fasta'))
@@ -1181,7 +1279,7 @@ def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outF
       if len(oSeqs) > 1: # check list is not empty
         cl = ['mafft', '--preservecase', '--thread', str(thread), '--localpair', '--maxiterate', str(mIterM), 'singles.fas'] 
         
-        lh = open('pipelign.log','a')
+        lh = open('mergeAll.log','a')
         ah = open('final.aln','w')
         
         try:
@@ -1192,7 +1290,11 @@ def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outF
         
         lh.close()
         ah.close()    
+        
+        concatLogFiles('pipelign.log','mergeAll.log')
+        os.remove('mergeAll.log')
                
+      copyFile('final.aln',outFile)
       return  
 
 
@@ -1207,7 +1309,7 @@ def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outF
 
             
     elif mFlag > 1: # at least two multiple sequence alignment 
-      lh = open('pipelign.log','a')
+      lh = open('mergeAll.log','a')
       mh = open('merge','w')
       
       try: # create the input text file
@@ -1219,6 +1321,9 @@ def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outF
       
       lh.close()
       mh.close()
+
+      concatLogFiles('pipelign.log','mergeAll.log')
+      os.remove('mergeAll.log')
       
       # write subMSAtable
       fh = open('subMSAtable','w')
@@ -1231,7 +1336,7 @@ def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outF
       else: # too many sequences, choose fft-ns-i
         cStr = 'mafft --preservecase --thread %d --maxiterate %d --merge subMSAtable merge' % (thread,mIterM)
       
-      lh = open('pipelign.log','a')
+      lh = open('mergeAll.log','a')
       ah = open('final.aln','w')
       
       try:
@@ -1244,10 +1349,63 @@ def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outF
       
       lh.close()
       ah.close()
+
+      concatLogFiles('pipelign.log','mergeAll.log')
+      os.remove('mergeAll.log')
       
       copyFile('final.aln',outFile)
       return
       
+#************************************************************************
+
+def separateLongAmbigs(ambigPer,cDir,tFileName,zName):
+  '''
+    Separates the long sequences that have ambiguous characters more than a limit
+  '''
+  
+  # list the ambiguous characters
+  
+  chars = ['X','N','!','*','?']
+  
+  # count ambiguous characters for each sequences
+  # if count is more than the threshold, separate them in another file
+  
+  gs = [] # contains good quality sequences
+  bs = [] # contains bad quality sequences
+  
+  handle = open('long.fas','r')
+  
+  # counts number of ambigs for each sequences
+  for seq in SeqIO.parse(handle,'fasta'):
+    seqStr = str(seq.seq).upper()
+    acount = 0
+    for i in range(len(chars)):
+      acount += seqStr.count(chars[i])
+    
+    propChars = int(len(seq.seq) * float(ambigPer))
+    
+    if acount > propChars:
+      bs.append(seq)
+    else:
+      gs.append(seq)
+    
+  if len(gs) > 0:
+    SeqIO.write(gs,'long.good.fas','fasta')
+  else:
+    print('\nAll long sequences have ambiguous characters more than allowed proportion %s' % ambigPer)
+    print('\n\nPipelign is exiting\n')
+    cZip(cDir,tName,zName)
+    
+  if len(bs) > 0:
+    SeqIO.write(bs,'long.bad.fas','fasta')
+    
+  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+  msg += ' Good quality long sequences written in <long.good.fas>\n' 
+  print(msg)
+  
+  handle.close()
+  
+
 #************************************************************************
   
 def getArguments():
@@ -1263,12 +1421,13 @@ def getArguments():
   parser.add_argument('-a', '--alphabet', required=True, help='Input sequences can be DNA/Protein', choices=['dna','aa','rna'], default='dna')
   parser.add_argument('-f', '--keepOrphans', help='Add fragments without clusters', action="store_true")
   parser.add_argument('-z', '--mZip', help='Create zipped temporary files', action="store_true")
-  parser.add_argument('-p', '--simPer', type=lengthThreshold, help="percent sequence similarity for clustering", default=0.8)
+  parser.add_argument('-p', '--simPer', type=lengthThreshold, help="Percent sequence similarity for clustering", default=0.8)
   parser.add_argument('-q', '--thread', nargs='?', const=1, type=int, help="Number of CPU to use for multithreads", default=1)
   parser.add_argument('-s', '--mIterateLong', type=iterThreshold, help="Number of iterations to refine long alignments", default=2)
   parser.add_argument('-m', '--mIterateMerge', type=iterThreshold, help="Number of iterations to refine merged alignment", default=2)
   parser.add_argument('-d', '--tempDirPath', required=False, help="Path for temporary directory",default=None)
   #parser.add_argument('-l', '--longSeqsOnly', help='Only align long sequences', action="store_true")
+  parser.add_argument('-w', '--ambigPer', type=lengthThreshold, help="Proportion of ambiguous characters allowed in the long sequences", default=0.1)  
   parser.add_argument('-n', '--stage', type=int,default=4, choices=[1,2,3,4],
     help=textwrap.dedent('''\
     1  Make alignments and HMMs of long sequence clusters
@@ -1307,10 +1466,20 @@ if __name__=="__main__":
       longName = 'long.fas',
       fragName = 'frag.fas',
       tempDirPath = args.tempDirPath,
+      ambigPer = args.ambigPer,
       #longSeqsOnly = args.longSeqsOnly,
       stage = args.stage,
       excludeClusters = args.excludeClusters)
   
+  # check whether input file exists
+  if not checkPresenceOfFile(mArgs.inFile):
+    msg = '\n==============================='
+    msg += '\nInput file %s does not exist in the given path'
+    msg += '\nPlease try again with the correct file name and path'
+    msg += '\n==============================='
+    msg += '\n\nPipelign is exiting.\n'
+    sys.exit(msg)
+
   # Pipeline process starts here
   cDir = os.getcwd() # save current working directory
   tFileName = 'input.fas' # input file copied to temporary directory
@@ -1321,8 +1490,7 @@ if __name__=="__main__":
   timeNow = time.strftime('%Y-%m-%d-%H%M%S')
   zName = 'pipelign.' + timeNow 
   
-  # check whether input file exists
-  checkPresenceOfFile(mArgs.inFile)
+    
   
   # check if mpi environment is present
   #mpi = checkMPI()
@@ -1350,12 +1518,16 @@ if __name__=="__main__":
   # make separate sequence file for long sequences and fragments
   mArgs.fragEmpty, numFrag = separateFullFragment(deFileName, mArgs.lenThr, mArgs.longName, mArgs.fragName)
   
+  # separate the long sequences containing ambiguous characters more than a given proportion
+  separateLongAmbigs(mArgs.ambigPer,cDir,tFileName,zName)
+  mArgs.longName = 'long.good.fas'
+  
   # use CD-HIT to group sequences based on similarity
   runCDHIT(mArgs.longName, mArgs.alphabet, mArgs.simPer, mArgs.thread,cDir,tFileName,zName)  
   
   # create separate files for each cluster
   numClusters = makeClusters(mArgs.longName,'grp.clstr')
-
+  
   # add cluster numbers and size to header
   addClusterNumberToReps('grp','long.ClusterList.txt','clsReps.fas')
   
@@ -1366,6 +1538,10 @@ if __name__=="__main__":
   
   else: # at least 3 clusters
     # align cluster reps
+    msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg += ' Aligning cluster representative sequences\n'
+    print(msg)
+
     if numClusters <= 100:
       linsi('clsReps.fas','clsReps.aln',mArgs.thread,mArgs.mIterL,'pipelign.log',cDir,tFileName,zName)
     else:
@@ -1393,8 +1569,13 @@ if __name__=="__main__":
     print('\nMidpoint rooted tree is drawn below:\n')
     drawAsciiTree('clsReps.aln.midpoint.treefile')
     print('\n')
+
   
   # make individual long cluster alignments
+  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+  msg += ' Aligning long sequence clusters\n' 
+  print(msg)
+  
   alnLongSequenceClustersParallel(numClusters,mArgs.thread,mArgs.mIterL,cDir,tFileName,zName) 
   
   # make HMMs and database from cluster alignments
@@ -1428,11 +1609,14 @@ if __name__=="__main__":
  
     mergeLongClusters(numClusters,mArgs.outFile,mArgs.thread,mArgs.mIterM,cDir,tFileName,zName) 
     
+    if not checkPresenceOfFile(mArgs.outFile):
+      if checkPresenceOfFile('final.aln'):
+        copyFile('final.aln',mArgs.outFile)
+
     msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
     msg += ' Final alignment written in %s\n' % mArgs.outFile
     print(msg)
     
-
     sys.exit('\nPipelign has finished working.\n')
       
   # if no fragments present
@@ -1516,6 +1700,10 @@ if __name__=="__main__":
   msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
   msg += ' Pipelign finished merging cluster alignments\n' 
   print(msg)
+
+  if not checkPresenceOfFile(mArgs.outFile):
+    if checkPresenceOfFile('final.aln'):
+      copyFile('final.aln',mArgs.outFile)
 
   print('\n\nFinal alignment written in %s\n' % mArgs.outFile)
   sys.exit('\nPipelign has finished working.\n')
