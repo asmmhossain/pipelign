@@ -2,7 +2,7 @@
 
 Semi-automated computational pipeline for aligning virus sequences.
 
-``Pipelign`` can be downloaded from github using the following command:
+``Pipelign`` can be downloade from github using the following command:
 
 ``git clone https://github.com/asmmhossain/pipelign``
 
