@@ -2024,16 +2024,22 @@ if __name__=="__main__":
   #mergeAllClusters(numClusters,mArgs.thread,mArgs.mIterM,cDir,tFileName,zName,allAssigned,mArgs.outFile)
   # if only one cluster, nothing to be done
   if numClusters == 1:
-    copyFile('long.0.aln','final.aln')
+    copyFile('long.0.aln','final.noOrphans.aln')
   # only two clusters, merge the pair
   elif numClusters ==2:
-    mergePair('long.0.aln','long.1.aln','final.aln',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
+    mergePair('long.0.aln','long.1.aln','final.noOrphans.aln',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
     
   # more than 2 clusters
   elif numClusters >= 3:
     resName = mergeSerial('clsReps.aln.midpoint.treefile','all',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
-    copyFile(resName,'final.aln')
+    copyFile(resName,'final.noOrphans.aln')
     
+  # add unclustered fragments
+  if mArgs.keepOrphans:
+    addFragments('frag.noClusters.fas','final.noOrphans.aln','final.aln',mArgs.thread,mArgs.mIterL,'merge.log',cDir,tFileName,zName)
+  else:
+    copyFile('final.noOrphans.aln','final.aln')
+      
   if not checkPresenceOfFile(mArgs.outFile):
     if checkPresenceOfFile('final.aln'):
       copyFile('final.aln',mArgs.outFile)

@@ -798,6 +798,26 @@ def buildHMMdb(nClusters):
   
 #***********************************************************************
 
+def makeHMMdbGNUParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
+  '''
+    - builds HMM from long sequence clusters
+    - builds the database from HMMs
+  
+  '''
+
+  fh = open(log,'a')
+  
+  numClusters = nClusters - 1 # for bash run
+  
+  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+  msg += ' Started making HMMs from long sequence cluster alignments\n'
+  print(msg)
+  
+  
+
+
+#***********************************************************************
+
 def makeHMMdbParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
   '''
     - builds HMM from long sequence clusters
