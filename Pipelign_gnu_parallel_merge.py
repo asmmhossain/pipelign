@@ -8,11 +8,13 @@
   The program takes as input a single FASTA formatted file
 
   Returns a FASTA formatted alignment file
+  
+  Uses GNU parallel to run jobs on multiple CPUs
 
 '''
 #*********************************************************************
 
-import sys, os, shutil, subprocess, argparse, textwrap
+import sys, os, shutil, subprocess, argparse, textwrap, stat
 from Bio import SeqIO, Phylo
 import tempfile
 import time
@@ -92,157 +94,7 @@ def concatLogFiles(original,newLog):
       lh.write(line)
   
   lh.close()
-#******************************************
   
-def addFull(fName,aName,oName,thread,mIterL,log,cDir,tName,zName,p=None):
-    '''
-      - add full sequences to the alignment using MAFFT's --add
-    '''
-
-    if p:
-        lName = log + '.' + str(p)
-    else:
-        lName = log + '.temp'
-  
-    lh = open(lName,'a')
-    ah = open(oName,'w')
-  
-    cl = ['mafft', '--preservecase', '--thread', str(thread), '--maxiterate', str(mIterL), '--add', fName, aName]
-        
-    try:
-        subprocess.check_call(cl,stdout=ah,stderr=lh)
-    except subprocess.CalledProcessError as e:
-        lh.close()
-        ah.close()
-        print(e)
-        cZip(cDir,tName,zName)
-  
-    lh.close()
-    ah.close()
-
-    if not p:
-        concatLogFiles('pipelign.log',lName)
-        os.remove(lName)
-        
-#******************************************
-
-def mergePair(aln1,aln2,alnFile,thread,mIterLong,log,cDir,tName,zName,p=None):
-    '''
-      - merge pair of alignments using MAFFT's --merge method
-    '''
-  
-    if p:
-        lName = log + '.' + str(p)
-    else:
-        lName = log + '.temp'
-  
-    lh = open(lName,'a')
-    ah = open(alnFile,'w')
-    
-    seq1 = list(SeqIO.parse(aln1,'fasta'))
-    seq2 = list(SeqIO.parse(aln2,'fasta'))
-    
-    lSeq1 = len(seq1)
-    lSeq2 = len(seq2)
-    
-    nSeq = seq1 + seq2
-    SeqIO.write(nSeq,'input','fasta')
-    
-    mStr = ''
-    count = 1
-    for i in range(lSeq1):
-        mStr += str(count) + ' '
-        count += 1
-    mStr += '\n'
-    for i in range(lSeq2):
-        mStr += str(count) + ' '
-        count += 1
-        
-    # write subMSAtable
-    fh = open('subMSAtable','w')
-    fh.write(mStr)
-    fh.close()  
-    
-  
-    cl = ['mafft', '--thread', str(thread), '--maxiterate', str(mIterLong), '--preservecase', '--merge', 'subMSAtable', 'input']
-
-    try:
-        subprocess.check_call(cl,stdout=ah,stderr=lh)
-    except subprocess.CalledProcessError as e:
-        lh.close()
-        ah.close()
-        print(e)
-        cZip(cDir,tName,zName)
-    
-    lh.close()
-    ah.close()
-  
-    if not p:
-        concatLogFiles('pipelign.log',lName)  
-        os.remove(lName)        
-        
-#******************************************
-
-def changeLeafNamesToClusterNames(tree,tp):
-    # annotate name of the leaf nodes to get cluster names
-    for leaf in tree:
-        lName = tp + '.' + leaf.name.split('_')[2]
-        leaf.name = lName
-        #print(leaf.name)
-    return tree
-
-#******************************************
-
-def mergeAlignmentPair(aln1,aln2,out,thread,mIterL,log,cDir,tName,zName):
-    print('aligning %s and %s to produce %s' % (aln1,aln2,out))
-    
-    seq1 = list(SeqIO.parse(aln1,'fasta'))
-    seq2 = list(SeqIO.parse(aln2,'fasta'))
-    
-    lSeq1 = len(seq1)
-    lSeq2 = len(seq2)
-    
-    # both clusters have only one sequence
-    # create a new file with the two sequences
-    # call L-INS-i to align them
-    if lSeq1 == 1 and lSeq2 == 1:
-        nSeq = seq1 + seq2
-        SeqIO.write(nSeq,'temp.fas','fasta')
-        linsi('temp.fas',out,thread,mIterL,log,cDir,tName,zName)
-    
-    # one cluster have only one sequence
-    # call --add
-    elif lSeq1 == 1:
-        addFull(aln1,aln2,out,thread,mIterL,log,cDir,tName,zName)
-    elif lSeq2 == 1:
-        addFull(aln2,aln1,out,thread,mIterL,log,cDir,tName,zName)
-    
-    # both clusters are alignments
-    elif lSeq1 > 1 and lSeq2 > 1:
-        mergePair(aln1,aln2,out,thread,mIterL,log,cDir,tName,zName)
-        
-#******************************************
-
-def mergeCherriesSerial(nCherries,cStr,iNodes,thread,mIterL,log,cDir,tName,zName):
-    leafs = cStr.split()
-    for i in range(nCherries):
-        #print('%s\t%s\t%s' % (leafs[2*i],leafs[2*i+1],iNodes[i]))
-        aln1 = leafs[2*i] + '.aln'
-        aln2 = leafs[2*i+1] + '.aln'
-        out = iNodes[i] + '.aln'
-        mergeAlignmentPair(aln1,aln2,out,thread,mIterL,log,cDir,tName,zName)
-        
-        i += 1
-#******************************************
-
-def addNameToInternalNodes(tree):
-    # annotate names to internal nodes
-    edge = 0
-    for node in tree.traverse():
-        if not node.is_leaf():
-            node.name = "NODE_%d" %edge
-            edge += 1
-    return tree
 
 #******************************************
 
@@ -692,16 +544,97 @@ def makeMidPointRootTree(treeFile):
 
 def drawAsciiTree(treeFile):
   '''
-    - draws ASCII tree on the console
+    - draws ASCII tree on the console using ete3
   '''
   
   # Read the tree in newick format
-  tree = Phylo.read(treeFile,'newick')
+  #tree = Phylo.read(treeFile,'newick')
 
-  Phylo.draw_ascii(tree)
+  #Phylo.draw_ascii(tree)
+  tree = Tree(treeFile)
+  #print(tree.get_ascii(show_internal=True))
+  print(tree)
   
 #***********************************************************************
 
+def alnSeqsMAFFT(cName,aName,thread,mIterL,log,cDir,tName,zName):
+  '''
+    calls FFT-NS-i or L-INS-i depending on the number of sequences 
+  '''
+
+  seqs = list(SeqIO.parse(cName,'fasta'))
+  
+  nSeqs = len(seqs)
+  
+  if nSeqs == 1:
+    copyFile(cName,aName)
+    
+  elif nSeqs <= 100:
+    linsi(cName,aName,thread,mIterL,log,cDir,tName,zName)
+  
+  else:
+    fftnsi(cName,aName,thread,mIterL,log,cDir,tName,zName)
+
+#***********************************************************************
+
+def alnLongSequenceClustersGNUParallel(nClusters,thread,mIterL,cDir,tName,zName):
+  '''
+    aligns long sequence cluster files using GNU parallel
+  '''
+
+  log = 'align.log'
+  fh = open(log,'a')
+  
+  numClusters = nClusters - 1 # for bash run
+  
+  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+  msg += ' Started aligning long sequence clusters\n'
+  print(msg)
+
+  pStr = '#!/bin/bash\n\n'
+  pStr += 'my_func(){\n\n'
+  pStr += '\tinF="long.$1.fas"\n\n'
+  pStr += '\tif [ -a $inF ]\n'
+  pStr += '\tthen\n'
+  pStr += '\t\tlen=$(grep -c ">" $inF)\n'
+  pStr += '\tfi\n\n'
+  
+  pStr += '\tif [ "$len" -eq "1" ]\n'
+  pStr += '\tthen\n'
+  pStr += '\t\tcat $inF > long.$1.aln\n\n'
+  
+  pStr += '\telif [ "$len" -le "100" ]\n'
+  pStr += '\tthen\n'
+  pStr += '\t\techo "aligning $1 with $len sequences with $3 threads"\n'
+  pStr += '\t\tmafft --localpair --thread $2 --maxiterate $3 --preservecase $inF > long.$1.aln\n'
+  pStr += '\telse\n'
+  pStr += '\t\techo "aligning $1 with $len sequence with $2 threads"\n'
+  pStr += '\t\tmafft --thread $2 --maxiterate $3 --preservecase $inF > long.$1.aln\n'
+  pStr += '\tfi\n\n'
+  pStr += '}\n\n'
+  
+  pStr += 'export -f my_func\n\n'
+  pStr += 'parallel -j 2 my_func ::: $(seq 0 1 %d) ::: %s ::: %s' % (numClusters,thread,mIterL)
+
+  il = open('longAlign.sh','w')
+  il.write(pStr)
+  il.close()
+  
+  # assign executable permission to the file
+  st = os.stat('longAlign.sh')
+  os.chmod('longAlign.sh', st.st_mode | stat.S_IEXEC)
+  
+  # subprocess call to run mafft in parallel
+  script = ['./longAlign.sh']
+  
+  try:
+    subprocess.check_call(script,stderr=fh)
+  except OSError as e:
+    print(e)
+    cZip(cDir,tName,zName)
+  
+#***********************************************************************
+    
 def alnLongSequenceClustersParallel(nClusters,thread,mIterL,cDir,tName,zName):
   '''
     - align long sequence cluster files in parallel using joblib 
@@ -741,29 +674,6 @@ def alnLongSequenceClustersParallel(nClusters,thread,mIterL,cDir,tName,zName):
   msg += ' Finished aligning long sequence clusters. Created files: <long.x.aln>\n'
   print(msg)
     
-#***********************************************************************
-
-def alnLongSequenceClustersSerial(numClusters,thread,mIterL,cDir,tName,zName):
-  '''
-    Aligns all the long sequence clusters serially
-  '''
-   
-  for i in range(numClusters):
-    cName = 'long.' + str(i) + '.fas'
-    aName = 'long.' + str(i) + '.aln'
-    
-    seqs = list(SeqIO.parse(cName,'fasta'))
-    
-    print('\tAligning cluster %d of %d sequences' % (i,len(seqs))) 
-    
-    if len(seqs) > 100:
-      fftnsi(cName,aName,thread,mIterL,'clusterAlign.log',cDir,tName,zName)
-    elif len(seqs) > 1:
-      linsi(cName,aName,thread,mIterL,'clusterAlign.log',cDir,tName,zName)
-    elif len(seqs) == 1:
-      copyFile(cName,aName)  
-  print('\n')
-  
 #***********************************************************************
 
 def buildHMM(aName,hName,thread,alphabet,log,cDir,tName,zName,p=None):
@@ -892,6 +802,26 @@ def buildHMMdb(nClusters):
   
 #***********************************************************************
 
+def makeHMMdbGNUParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
+  '''
+    - builds HMM from long sequence clusters
+    - builds the database from HMMs
+  
+  '''
+
+  fh = open(log,'a')
+  
+  numClusters = nClusters - 1 # for bash run
+  
+  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+  msg += ' Started making HMMs from long sequence cluster alignments\n'
+  print(msg)
+  
+  
+
+
+#***********************************************************************
+
 def makeHMMdbParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
   '''
     - builds HMM from long sequence clusters
@@ -905,7 +835,7 @@ def makeHMMdbParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
   to_run_tuples = list(map(hmm, range(nClusters)))  
   
   if len(to_run_tuples):
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
     msg += ' Started building HMMs from long cluster alignments\n'
     print(msg)
 
@@ -923,34 +853,6 @@ def makeHMMdbParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
     msg += ' HMM database created\n'
     print(msg)
     
-#***********************************************************************
-
-def makeHMMdbSerial(numClusters,thread,alphabet,log,cDir,tName,zName):
-  '''
-    creates the HMMs from long sequence alignments
-  '''
-
-  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
-  msg += ' Started building HMMs from long cluster alignments\n'
-  print(msg)
-
-  for i in range(numClusters):
-    aName = 'long.' + str(i) + '.aln'
-    hName = 'long.' + str(i) + '.hmm'
-    
-    buildHMM(aName,hName,thread,alphabet,log,cDir,tName,zName)
-    print('HMM %s built' % hName)
-    
-  msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
-  msg += ' Building HMM database\n'
-  print(msg)
-  
-  buildHMMdb(numClusters)
-
-  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
-  msg += ' HMM database created\n'
-  print(msg)
-  
 #***********************************************************************
 
 def addFragments(fName,aName,oName,thread,mIterL,log,cDir,tName,zName,p=None):
@@ -1372,6 +1274,56 @@ def createFragmentClusters(numClusters):
   
 #************************************************************************
 
+def addFragmentToClustersGNUParallel(nClusters,log,thread,mIterL,cDir,tName,zName):
+  '''
+    add fragments to clusters using GNU parallel
+  '''
+  
+  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+  msg += ' Adding fragments to long sequence clusters\n'
+  print(msg)
+  
+  # get number of clusters for bash running
+  numClusters = nClusters - 1
+  
+  # create bash script for running MAFFT --addfragment
+  pStr = '#!/bin/bash\n\n'
+  pStr += 'my_func(){\n\n'
+
+  pStr += '\tinF="frag.$1.fas"\n\n'
+  pStr += '\tif [ -a $inF ]\n' # file present
+  pStr += '\tthen\n'
+  pStr += '\t\tmafft --preservecase --thread %s --maxiterate %s --addfragments $inF long.$1.aln > cls.$1.aln\n' % (thread,mIterL)
+  pStr += '\telse\n'
+  pStr += '\t\tcat long.$1.aln > cls.$1.aln\n'
+  pStr += '\tfi\n\n'
+  pStr += '}\n\n'
+  
+  pStr += 'export -f my_func\n\n'
+  pStr += 'parallel -j 2 my_func ::: $(seq 0 1 %d) ::: %s ::: %s' % (numClusters,thread,mIterL)
+
+  il = open('fragAlign.sh','w')
+  il.write(pStr)
+  il.close()
+  
+  # assign executable permission to the file
+  st = os.stat('fragAlign.sh')
+  os.chmod('fragAlign.sh', st.st_mode | stat.S_IEXEC)
+  
+  # subprocess call to run mafft in parallel
+  script = ['./fragAlign.sh']
+  
+  fh = open(log,'a')
+  
+  try:
+    subprocess.check_call(script,stderr=fh,stdout=fh)
+  except OSError as e:
+    print(e)
+    cZip(cDir,tName,zName)
+   
+
+#************************************************************************
+
 def addFragmentToClustersParallel(nClusters,log,thread,mIterL,cDir,tName,zName):
   '''
     This will add fragments to their cluster alignments using joblib
@@ -1405,51 +1357,7 @@ def addFragmentToClustersParallel(nClusters,log,thread,mIterL,cDir,tName,zName):
   msg += ' Finished adding fragments to long sequence clusters. Created files: <cls.x.aln>\n'
   print(msg)
       
-#************************************************************************
-def addFragmentToClustersSerial(numClusters,log,thread,mIterL,cDir,tName,zName):
-  '''
-   adds fragments to their long sequence alignments
-  '''
 
-  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
-  msg += ' Adding fragments to long sequence clusters\n'
-  print(msg)
-
-  for i in range(numClusters):
-    fName = 'frag.' + str(i) + '.fas'
-    aName = 'long.' + str(i) + '.aln'
-    oName = 'cls.' + str(i) + '.aln'
-    
-    if checkPresenceOfFile(fName):
-      lSeqs = list(SeqIO.parse(aName,'fasta'))
-    
-      if len(lSeqs) > 1:
-        addFragments(fName,aName,oName,mIterL,thread,log,cDir,tName,zName)
-
-      elif len(lSeqs) == 1:
-        nSeqs = []
-        nSeqs.append(lSeqs[0])
-      
-        fSeqs = list(SeqIO.parse(fName,'fasta'))
-        for frag in fSeqs:
-          nSeqs.append(frag)
-      
-        SeqIO.write(nSeqs,'temp.fas','fasta')
-      
-        if len(nSeqs) < 100:
-          linsi('temp.fas',oName,thread,mIterL,log,cDir,tName,zName)
-        else:
-          fftnsi('temp.fas',oName,thread,mIterL,log,cDir,tName,zName)
-      
-        try:
-          os.remove('temp.fas')
-        except OSError as e:
-          print(e)
-          cZip(cDir,tName,zName)
-          
-    else: # no fragment for that cluster
-      copyFile(aName,oName)
-      
 #************************************************************************
 
 def mergeAllClusters(numClusters,thread,mIterM,cDir,tName,zName,allAssigned,outFile):
@@ -1650,10 +1558,178 @@ def separateLongAmbigs(ambigPer,cDir,tFileName,zName):
   print(msg)
   
   handle.close()
-  
+
 #************************************************************************
 
-def mergeSerial(tree,tp,thread,mIterL,log,cDir,tName,zName):
+def addNameToInternalNodes(tree):
+    # annotate names to internal nodes
+    edge = 0
+    for node in tree.traverse():
+        if not node.is_leaf():
+            node.name = "NODE_%d" %edge
+            edge += 1
+    return tree
+
+#************************************************************************
+
+def changeLeafNamesToClusterNames(tree,tp):
+    # annotate name of the leaf nodes to get cluster names
+    for leaf in tree:
+        lName = tp + '.' + leaf.name.split('_')[2]
+        leaf.name = lName
+        #print(leaf.name)
+    return tree
+
+#************************************************************************
+
+def mergeCherries_gnu_parallel(nCherries,cStr,iNodes,fPre,thread,mIterL,log,cDir,tName,zName):
+    '''
+     merge pair of alignments in parallel using GNU's parallel tool
+    '''
+    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg += ' Merging pairs of clusters\n'
+    print(msg)
+    
+    pStr = '#!/bin/bash\n\n'
+    pStr += 'my_func(){\n\n'
+    
+    pStr += '\tind1=$(($1*2-1))\n'
+    pStr += '\tind2=$(($1*2))\n\n'
+    
+    pStr += '\taln1=$(echo $4 | awk -v var="$ind1" \'{print $var}\')\n'
+    pStr += '\taln2=$(echo $4 | awk -v var="$ind2" \'{print $var}\')\n'
+    pStr += '\toName=$(echo $5 | awk -v var="$1*2-1" \'{print $var}\')\n\n'
+    
+    pStr += '\tl1=$(grep -c ">" $aln1.aln)\n'
+    pStr += '\tl2=$(grep -c ">" $aln2.aln)\n\n'
+    
+    pStr += '\tif [ $l1 -eq "1" ] && [ $l2 -eq "1" ] \n'
+    pStr += '\tthen\n'
+    pStr += '\t\tcat $aln1.aln $aln2.aln > temp.$6.$1.fas\n'
+    pStr += '\t\tmafft --localpair --preservecase --thread $2 --maxiterate $3 temp.$6.$1.fas > $oName.aln\n'
+    pStr += '\telif [ $l1 -eq "1" ] \n'
+    pStr += '\tthen\n'
+    pStr += '\t\tmafft --preservecase --thread $2 --maxiterate $3 --addfragments $aln1.aln $aln2.aln > $oName.aln\n'
+    pStr += '\telif [ $l2 -eq "1" ] \n'
+    pStr += '\tthen\n'
+    pStr += '\t\tmafft --preservecase --thread $2 --maxiterate $3 --addfragments $aln2.aln $aln1.aln > $oName.aln\n'
+    pStr += '\telse\n'
+    pStr += '\t\tcat $aln1.aln $aln2.aln > input.$6.$1.fas\n'
+    pStr += '\t\tstr1=""\n'
+    pStr += '\t\tcount=1\n'
+    pStr += '\t\tgap=" "\n\n'
+    
+    pStr += '\t\tfor i in $(seq 1 1 $l1)\n'
+    pStr += '\t\tdo\n'
+    pStr += '\t\t\tstr1=$str1$count$gap\n'
+    pStr += '\t\t\tcount=$(($count+1))\n'
+    pStr += '\t\tdone\n\n'
+    
+    pStr += '\t\techo $str1 > msaTable.$6.$1\n'
+    pStr += '\t\techo "" >> msaTable.$6.$1\n\n'
+    
+    pStr += '\t\tstr2=""\n'
+    pStr += '\t\tfor i in $(seq 1 1 $l2)\n'
+    pStr += '\t\tdo\n'
+    pStr += '\t\t\tstr2=$str2$count$gap\n'
+    pStr += '\t\t\tcount=$(($count+1))\n'
+    pStr += '\t\tdone\n\n'
+    
+    pStr += '\t\techo $str2 > msaTable.$6.$1\n'
+    
+    pStr += '\t\tmafft --preservecase --thread $2 --maxiterate $3 --merge msaTable.$6.$1 input.$6.$1.fas > $oName.aln\n\n'
+    
+    pStr += '\tfi\n\n'
+    
+    pStr += '}\n\n'
+    
+    pStr += 'export -f my_func\n\n'
+    
+    pStr += 'parallel -j 2 my_func ::: $(seq 1 1 %d)' % nCherries
+    pStr += ' ::: %s ::: %s ::: "%s"' % (thread,mIterL,cStr)
+    pStr += ' ::: "%s" ::: "%s"\n' % (' '.join(iNodes), fPre)
+    
+    il = open('mergeParallel.sh','w')
+    il.write(pStr)
+    il.close()
+    
+    # assign executable permission to the bash script
+    st = os.stat('mergeParallel.sh')
+    os.chmod('mergeParallel.sh',st.st_mode | stat.S_IEXEC)
+    
+    # subprocess call to run merge in parallel
+    script = ['./mergeParallel.sh']
+    
+    try:
+        fh = open('merge.log','a')
+        subprocess.check_call(script,stderr=fh)
+    except OSError as e:
+        print(e)
+        fh.close()
+        #cZip(cDir,tName,zName)
+    
+    fh.close()
+
+#************************************************************************
+
+def mergePair(aln1,aln2,alnFile,thread,mIterLong,log,cDir,tName,zName,p=None):
+    '''
+      - merge pair of alignments using MAFFT's --merge method
+    '''
+  
+    if p:
+        lName = log + '.' + str(p)
+    else:
+        lName = log + '.temp'
+  
+    lh = open(lName,'a')
+    ah = open(alnFile,'w')
+    
+    seq1 = list(SeqIO.parse(aln1,'fasta'))
+    seq2 = list(SeqIO.parse(aln2,'fasta'))
+    
+    lSeq1 = len(seq1)
+    lSeq2 = len(seq2)
+    
+    nSeq = seq1 + seq2
+    SeqIO.write(nSeq,'input','fasta')
+    
+    mStr = ''
+    count = 1
+    for i in range(lSeq1):
+        mStr += str(count) + ' '
+        count += 1
+    mStr += '\n'
+    for i in range(lSeq2):
+        mStr += str(count) + ' '
+        count += 1
+        
+    # write subMSAtable
+    fh = open('subMSAtable','w')
+    fh.write(mStr)
+    fh.close()  
+    
+  
+    cl = ['mafft', '--thread', str(thread), '--maxiterate', str(mIterLong), '--preservecase', '--merge', 'subMSAtable', 'input']
+
+    try:
+        subprocess.check_call(cl,stdout=ah,stderr=lh)
+    except subprocess.CalledProcessError as e:
+        lh.close()
+        ah.close()
+        print(e)
+        cZip(cDir,tName,zName)
+    
+    lh.close()
+    ah.close()
+  
+    if not p:
+        concatLogFiles('pipelign.log',lName)  
+        os.remove(lName)        
+        
+#******************************************
+
+def merge_gnu_parallel(tree,tp,thread,mIterL,log,cDir,tName,zName):
     # read the tree
     tree = Tree('clsReps.aln.midpoint.treefile',format=1)
 
@@ -1668,7 +1744,7 @@ def mergeSerial(tree,tp,thread,mIterL,log,cDir,tName,zName):
         tree = changeLeafNamesToClusterNames(tree,'long')
     elif tp == 'all':
         tree = changeLeafNamesToClusterNames(tree,'cls')
-    #print(tree.get_ascii(show_internal=True))
+    print(tree.get_ascii(show_internal=True))
     
     # get cherries and update trees
     while(len(tree) > 1):
@@ -1690,8 +1766,8 @@ def mergeSerial(tree,tp,thread,mIterL,log,cDir,tName,zName):
         #print(nCherries)
         cStr = ' '.join(cherries)
         #print(cStr)
-        mergeCherriesSerial(nCherries,cStr,iNodes,thread,mIterL,log,cDir,tName,zName)
-        
+        mergeCherries_gnu_parallel(nCherries,cStr,iNodes,'merge',thread,mIterL,log,cDir,tName,zName)
+        #break
     
         # get the pointers to the cherries leafs and remove them
         for cherry in cherries:
@@ -1703,6 +1779,8 @@ def mergeSerial(tree,tp,thread,mIterL,log,cDir,tName,zName):
     
     fName = tree.name + '.aln'
     return fName
+  
+
 #************************************************************************
   
 def getArguments():
@@ -1725,13 +1803,14 @@ def getArguments():
   parser.add_argument('-d', '--tempDirPath', required=False, help="Path for temporary directory",default=None)
   #parser.add_argument('-l', '--longSeqsOnly', help='Only align long sequences', action="store_true")
   parser.add_argument('-w', '--ambigPer', type=lengthThreshold, help="Proportion of ambiguous characters allowed in the long sequences", default=0.1)  
-  parser.add_argument('-n', '--stage', type=int,default=4, choices=[1,2,3,4],
+  parser.add_argument('-n', '--stage', type=int,default=5, choices=[1,2,3,4,5,6],
     help=textwrap.dedent('''\
     1  Make alignments and HMMs of long sequence clusters
     2  Align only long sequences
-    3  Make cluster alignments with fragments
-    4  Align all sequences
-    5  Filter sequences from alignment
+    3  Assign fragments to clusters
+    4  Make cluster alignments with fragments
+    5  Align all sequences
+    6  Filter sequences from alignment
   	'''))
 
   parser.add_argument('-x', '--excludeClusters', help='Exclude clusters from final alignment', action="store_true")  
@@ -1874,11 +1953,11 @@ if __name__=="__main__":
   print(msg)
   
   #alnLongSequenceClustersParallel(numClusters,mArgs.thread,mArgs.mIterL,cDir,tFileName,zName) 
-  alnLongSequenceClustersSerial(numClusters,mArgs.thread,mArgs.mIterL,cDir,tFileName,zName)
+  
+  alnLongSequenceClustersGNUParallel(numClusters,mArgs.thread,mArgs.mIterL,cDir,tFileName,zName) 
   
   # make HMMs and database from cluster alignments
-  #makeHMMdbParallel(numClusters,mArgs.thread,mArgs.alphabet,'hmmer.log',cDir,tFileName,zName)
-  makeHMMdbSerial(numClusters,mArgs.thread,mArgs.alphabet,'hmmer.log',cDir,tFileName,zName)
+  makeHMMdbParallel(numClusters,mArgs.thread,mArgs.alphabet,'hmmer.log',cDir,tFileName,zName)
   
   # only create long sequence alignments and HMMs
   if mArgs.stage == 1:
@@ -1907,7 +1986,6 @@ if __name__=="__main__":
     print(msg)
  
     #mergeLongClusters(numClusters,mArgs.outFile,mArgs.thread,mArgs.mIterM,cDir,tFileName,zName) 
-    # if only one cluster, nothing to be done
     if numClusters == 1:
       copyFile('long.0.aln','final.aln')
     # only two clusters, merge the pair
@@ -1916,7 +1994,8 @@ if __name__=="__main__":
     
     # more than 2 clusters
     elif numClusters >= 3:
-      resName = mergeSerial('clsReps.aln.midpoint.treefile','long',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
+
+      resName = merge_gnu_parallel('clsReps.aln.midpoint.treefile','long',mArgs.thread,mArgs.mIterL,'merge.log',cDir,tFileName,zName)
       copyFile(resName,'final.aln')
     
     if checkPresenceOfFile('final.aln'):
@@ -1932,29 +2011,14 @@ if __name__=="__main__":
   if mArgs.fragEmpty:
     print('\nNo fragments present in the input file')
       
-    # create <cls.xx.aln> files by copying <long.xx.aln> files
-    for cls in range(numClusters):
-      sFile = 'long.' + str(i) + '.aln'
-      dFile = 'cls.' + str(i) + '.aln'
-      copyFile(sFile,dFile)
-
     msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
     msg += ' Merging long sequence clusters\n'
     print(msg)
 
     #mergeLongClusters(numClusters,mArgs.outFile,mArgs.thread,mArgs.mIterM,cDir,tFileName,zName) 
-    # if only one cluster, nothing to be done
-    if numClusters == 1:
-      copyFile('cls.0.aln','final.aln')
-    # only two clusters, merge the pair
-    elif numClusters ==2:
-      mergePair('cls.0.aln','cls.1.aln','final.aln',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
+    resName = merge_gnu_parallel('clsReps.aln.midpoint.treefile','long',mArgs.thread,mArgs.mIterL,'merge.log',cDir,tFileName,zName)
+    copyFile(resName,'final.aln')
 
-    # more than 2 clusters
-    elif numClusters >= 3:
-      resName = mergeSerial('clsReps.aln.midpoint.treefile','long',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
-      copyFile(resName,'final.aln')
-    
     if checkPresenceOfFile('final.aln'):
       copyFile('final.aln',mArgs.outFile)
   
@@ -1962,7 +2026,6 @@ if __name__=="__main__":
     msg += ' Final alignment written in %s\n' % mArgs.outFile
     print(msg)
     
-      
   else: # at least one fragment present
     
     # fragments need to be assigned clusters
@@ -1998,13 +2061,29 @@ if __name__=="__main__":
         
     # create clusters of fragments, un-assigned ones are written in <frag.noCluster.fas>
     allAssigned = createFragmentClusters(numClusters)  
-          
+    
+    # Assign fragments to cluster and exit
+    if mArgs.stage == 3:
+      msg += '\n\nFragments are assigned clusters in <frag.x.fas>'
+      msg += '\n\nPipelign has finished working\n'
+      
+      # No path provided for temporary directory
+      if mArgs.tempDirPath is None:
+        try:
+          wName = cDir + '/' + zName 
+          shutil.copytree(tDirName,wName) 
+        except OSError as e:
+          print(e)
+          cZip(cDir,tFileName,zName)
+
+      sys.exit(msg)      
+   
+    addFragmentToClustersGNUParallel(numClusters,'fragAlign.log',mArgs.thread,mArgs.mIterL,cDir,tFileName,zName)
+    
     #addFragmentToClustersParallel(numClusters,'fragAlign.log',mArgs.thread,mArgs.mIterL,cDir,tFileName,zName)
     
-    addFragmentToClustersSerial(numClusters,'pipelign.log',mArgs.thread,mArgs.mIterL,cDir,tFileName,zName)
-    
     # only alignments with fragments were asked  
-    if mArgs.stage == 3:
+    if mArgs.stage == 4:
       # copy entire work directory inside current directory, name it <pipelign.run>
     
       # No path provided for temporary directory
@@ -2036,9 +2115,9 @@ if __name__=="__main__":
     
   # more than 2 clusters
   elif numClusters >= 3:
-    resName = mergeSerial('clsReps.aln.midpoint.treefile','all',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
+    resName = merge_gnu_parallel('clsReps.aln.midpoint.treefile','all',mArgs.thread,mArgs.mIterL,'merge.log',cDir,tFileName,zName)
     copyFile(resName,'final.noOrphans.aln')
-    
+  
   # add unclustered fragments
   if mArgs.keepOrphans:
     # create final alignment by merging cluster alignments
@@ -2047,9 +2126,10 @@ if __name__=="__main__":
     print(msg)
 
     addFragments('frag.noClusters.fas','final.noOrphans.aln','final.aln',mArgs.thread,mArgs.mIterL,'merge.log',cDir,tFileName,zName)
+    
   else:
     copyFile('final.noOrphans.aln','final.aln')
-      
+
   # create final alignment by merging cluster alignments
   msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
   msg += ' Pipelign finished merging cluster alignments\n' 
@@ -2060,4 +2140,3 @@ if __name__=="__main__":
 
   print('\n\nFinal alignment written in %s\n' % mArgs.outFile)
   sys.exit('\nPipelign has finished working.\n')
-  
