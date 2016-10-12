@@ -1919,9 +1919,8 @@ if __name__=="__main__":
       resName = mergeSerial('clsReps.aln.midpoint.treefile','long',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
       copyFile(resName,'final.aln')
     
-    if not checkPresenceOfFile(mArgs.outFile):
-      if checkPresenceOfFile('final.aln'):
-        copyFile('final.aln',mArgs.outFile)
+    if checkPresenceOfFile('final.aln'):
+      copyFile('final.aln',mArgs.outFile)
 
     msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
     msg += ' Final alignment written in %s\n' % mArgs.outFile
@@ -1933,6 +1932,12 @@ if __name__=="__main__":
   if mArgs.fragEmpty:
     print('\nNo fragments present in the input file')
       
+    # create <cls.xx.aln> files by copying <long.xx.aln> files
+    for cls in range(numClusters):
+      sFile = 'long.' + str(i) + '.aln'
+      dFile = 'cls.' + str(i) + '.aln'
+      copyFile(sFile,dFile)
+
     msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
     msg += ' Merging long sequence clusters\n'
     print(msg)
@@ -1940,24 +1945,24 @@ if __name__=="__main__":
     #mergeLongClusters(numClusters,mArgs.outFile,mArgs.thread,mArgs.mIterM,cDir,tFileName,zName) 
     # if only one cluster, nothing to be done
     if numClusters == 1:
-      copyFile('long.0.aln','final.aln')
+      copyFile('cls.0.aln','final.aln')
     # only two clusters, merge the pair
     elif numClusters ==2:
-      mergePair('long.0.aln','long.1.aln','final.aln',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
+      mergePair('cls.0.aln','cls.1.aln','final.aln',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
 
     # more than 2 clusters
     elif numClusters >= 3:
       resName = mergeSerial('clsReps.aln.midpoint.treefile','long',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
       copyFile(resName,'final.aln')
     
-    if not checkPresenceOfFile(mArgs.outFile):
-      if checkPresenceOfFile('final.aln'):
-        copyFile('final.aln',mArgs.outFile)
+    if checkPresenceOfFile('final.aln'):
+      copyFile('final.aln',mArgs.outFile)
   
     msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
     msg += ' Final alignment written in %s\n' % mArgs.outFile
     print(msg)
     
+      
   else: # at least one fragment present
     
     # fragments need to be assigned clusters
@@ -2024,10 +2029,10 @@ if __name__=="__main__":
   #mergeAllClusters(numClusters,mArgs.thread,mArgs.mIterM,cDir,tFileName,zName,allAssigned,mArgs.outFile)
   # if only one cluster, nothing to be done
   if numClusters == 1:
-    copyFile('long.0.aln','final.noOrphans.aln')
+    copyFile('cls.0.aln','final.noOrphans.aln')
   # only two clusters, merge the pair
   elif numClusters ==2:
-    mergePair('long.0.aln','long.1.aln','final.noOrphans.aln',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
+    mergePair('cls.0.aln','cls.1.aln','final.noOrphans.aln',mArgs.thread,mArgs.mIterM,'merge.log',cDir,tFileName,zName)
     
   # more than 2 clusters
   elif numClusters >= 3:
@@ -2040,18 +2045,14 @@ if __name__=="__main__":
   else:
     copyFile('final.noOrphans.aln','final.aln')
       
-  if not checkPresenceOfFile(mArgs.outFile):
-    if checkPresenceOfFile('final.aln'):
-      copyFile('final.aln',mArgs.outFile)
-  
   # create final alignment by merging cluster alignments
   msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
   msg += ' Pipelign finished merging cluster alignments\n' 
   print(msg)
 
-  if not checkPresenceOfFile(mArgs.outFile):
-    if checkPresenceOfFile('final.aln'):
-      copyFile('final.aln',mArgs.outFile)
+  if checkPresenceOfFile('final.aln'):
+    copyFile('final.aln',mArgs.outFile)
 
   print('\n\nFinal alignment written in %s\n' % mArgs.outFile)
   sys.exit('\nPipelign has finished working.\n')
+  
