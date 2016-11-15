@@ -269,7 +269,7 @@ def deAlign(iFile, dFile):
         fh.write(st)
         fh.close()
   
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Gapless sequence file written in <%s>\n' % dFile
         print(msg)
   
@@ -316,7 +316,7 @@ def separateFullFragment(seqFile, lenThr, longName, fragName):
     # write long file
     SeqIO.write(longS,longName,'fasta') 
   
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' <%s> ' % longName
   
     fEmpty = True
@@ -377,7 +377,7 @@ def separateLongAmbigs(alphabet,ambigPer,cDir,tFileName,zName):
     if len(bs) > 0:
         SeqIO.write(bs,'long.bad.fas','fasta')
     
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Good quality long sequences written in <long.good.fas>\n' 
     print(msg)
   
@@ -407,7 +407,7 @@ def runCDHIT(longName,alphabet,per,thread,cDir,tName,zName):
         print('Only one Long sequence present')
         return
     '''
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
   
     # open log file
     lh = open('cdhit.log','a') 
@@ -441,7 +441,7 @@ def runCDHIT(longName,alphabet,per,thread,cDir,tName,zName):
   
     lh.close() # close log file   
   
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' CD-HIT finished. Files created: <grp> and <grp.clstr>\n'
     print(msg)
 
@@ -521,11 +521,11 @@ def makeClusters(longName,cName):
     fh.close()
   
     if cls > 0:
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' %d cluster file(s) created. File names: <long.x.fas>\n' % cls
         print(msg)
     else:
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Could not create cluster files.'
         msg += '\nPipelign is exiting\n'
         sys.exit(msg)
@@ -563,7 +563,7 @@ def addClusterNumberToReps(repName,lstFile,outFile):
             seq.name = seq.id
             seq.description = seq.id
         else:
-            msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+            msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
             msg += ' Error: %s was not found in <long.ClusterList.txt>.' % seq.id
             msg += '\nPipelign is exiting\n'
             sys.exit(msg)
@@ -639,7 +639,7 @@ def alnLongSequenceClustersGNUParallel(nClusters,thread,mIterL,cDir,tName,zName)
   
     numClusters = nClusters - 1 # for bash run
   
-    #msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    #msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     #msg += ' Started aligning long sequence clusters\n'
     #print(msg)
 
@@ -695,7 +695,7 @@ def alnLongSequenceClustersJoblibParallel(nClusters,thread,mIterL,cDir,tName,zNa
   log = 'align.log'
   #lh = open('pipelign.log','a')
   
-  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+  msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
   msg += ' Started aligning long sequence clusters\n'
   print(msg)
   
@@ -722,7 +722,7 @@ def alnLongSequenceClustersJoblibParallel(nClusters,thread,mIterL,cDir,tName,zNa
     num_parallel_jobs = math.ceil(len(to_copy)/thread) if nClusters < thread else thread
     joblib.Parallel(n_jobs=num_parallel_jobs)(joblib.delayed(shutil.copyfile)(x[0],x[1]) for x in to_copy)
 
-  msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+  msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
   msg += ' Finished aligning long sequence clusters. Created files: <long.x.aln>\n'
   print(msg)
     
@@ -743,7 +743,7 @@ def makeHMMdbParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
     to_run_tuples = list(map(hmm, range(nClusters)))  
   
     if len(to_run_tuples):
-        msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Started building HMMs from long cluster alignments\n'
         print(msg)
 
@@ -751,13 +751,13 @@ def makeHMMdbParallel(nClusters,thread,alphabet,log,cDir,tName,zName):
         num_threads_per_job = int(thread/nClusters) if thread > nClusters else 1
         joblib.Parallel(n_jobs=num_parallel_jobs)(joblib.delayed(buildHMM)(x[0],x[1],num_threads_per_job,alphabet,log,cDir,tName,zName,x[0].split('.')[1])  for x in to_run_tuples)
     
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Building HMM database\n'
         print(msg)
     
         buildHMMdb(nClusters)
 
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' HMM database created\n'
         print(msg)
     
@@ -941,7 +941,7 @@ def mergeCherries_gnu_parallel(nCherries,cStr,iNodes,fPre,thread,mIterL,log,cDir
     '''
      merge pair of alignments in parallel using GNU's parallel tool
     '''
-    msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Merging pairs of clusters\n'
     print(msg)
     
@@ -1175,7 +1175,7 @@ def longSeqAlignment(numClusters,mArgs,cDir,tFileName,zName):
       
     '''
     
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Merging long sequence clusters\n'
     print(msg)
     
@@ -1200,11 +1200,11 @@ def longSeqAlignment(numClusters,mArgs,cDir,tFileName,zName):
     
     
     if checkPresenceOfFile(mArgs.outFile):
-        msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Final alignment written in <%s>\n' % mArgs.outFile
         print(msg)
     else:
-        msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Pipelign could not write the file <%s>\n' % mArgs.outFile
         msg += '\tSomething went wrong. Please check the zipped output directory.\n' 
         print(msg)
@@ -1233,7 +1233,7 @@ def runBlast(log):
       
     cStr += '-out pipelign.blastdb'   
 
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Creating BLAST database from Cluster representatives\n'
     print(msg)
 
@@ -1307,7 +1307,7 @@ def searchHMMdb(log,thread,alpha,res,cDir,tName,zName):
     elif alpha == 'aa':
         cStr = 'hmmscan --cpu %d --tblout %s --noali pipelign.hmm frag.noBlast.fas' % (thread,res)
     
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Searching HMM database to assign clusters to remaining fragments\n'
     print(msg)
   
@@ -1455,7 +1455,7 @@ def assignClusterstoFrags(numClusters,numFrag,mArgs,tDirName,cDir,tFileName,zNam
         fragWithClusters = len(mIds) 
         #print(fragWithClusters)
 
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' %d fragments were assigned clusters using BLAST search\n' % fragWithClusters
         print(msg)
   
@@ -1479,7 +1479,7 @@ def assignClusterstoFrags(numClusters,numFrag,mArgs,tDirName,cDir,tFileName,zNam
             numHMM = getHMMclusters()
             
             if numHMM > 0: # if fragments were assigned clusters based on HMM search
-                msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+                msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
                 msg += ' %d fragments were assigned clusters using HMM search\n' % numHMM
                 print(msg)
                 
@@ -1494,7 +1494,7 @@ def addFragmentToClustersGNUParallel(nClusters,log,mArgs,cDir,tName,zName):
         add fragments to clusters using GNU parallel
     '''
   
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Adding fragments to long sequence clusters\n'
     print(msg)
   
@@ -1577,7 +1577,7 @@ def addFragmentToClustersJoblibParallel(nClusters,log,thread,mIterL,cDir,tName,z
             - will create cluster alignment files: <cls.x.aln>
     '''
   
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Adding fragments to long sequence clusters\n'
     print(msg)
 
@@ -1599,7 +1599,7 @@ def addFragmentToClustersJoblibParallel(nClusters,log,thread,mIterL,cDir,tName,z
         num_parallel_jobs = math.ceil(len(to_copy)/thread) if nClusters < thread else thread
         joblib.Parallel(n_jobs=num_parallel_jobs)(joblib.delayed(shutil.copyfile)(x[0],x[2]) for x in to_copy)
 
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Finished adding fragments to long sequence clusters. Created files: <cls.x.aln>\n'
     print(msg)
       
@@ -1700,7 +1700,7 @@ if __name__=="__main__":
     dName = tDirName + '/' + tFileName
     copyFile(mArgs.inFile,dName)
   
-    msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Pipelign started with sequence file <%s>\n' % mArgs.inFile 
     print(msg)
   
@@ -1728,14 +1728,14 @@ if __name__=="__main__":
     addClusterNumberToReps('grp','long.ClusterList.txt','clsReps.fas')
 
     if numClusters < 3: # less than 3 clusters, tree will not be built
-        msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Only %d cluster(s) created. Phylogenetic tree cannot be built\n' % numClusters
         print(msg)
 
     else: # at least 3 clusters
         # ********************************************************
         # align cluster reps; reconstruct phylogeny; draw midpoint rooted tree
-        msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Aligning cluster representative sequences\n'
         print(msg)
 
@@ -1744,21 +1744,21 @@ if __name__=="__main__":
         else:
             fftnsi('clsReps.fas','clsReps.aln',mArgs.thread,mArgs.mIterL,'pipelign.log',cDir,tFileName,zName)
     
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Alignment of cluster representatives written in <clsReps.aln>\n' 
         print(msg)
     
         # generate phylogenetic tree using IQ-TREE  
         makeIQTree('clsReps.aln',mArgs.thread,cDir,tFileName,zName,mArgs.alphabet)
 
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Phylogenetic tree of the cluster representatives written in <clsReps.aln.treefile>\n' 
         print(msg)
     
         # make midpoint root tree for cluster representatives
         makeMidPointRootTree('clsReps.aln.treefile')
     
-        msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' Midpoint rooted tree written in <clsReps.aln.midpoint.treefile>\n' 
         print(msg)
     
@@ -1769,7 +1769,7 @@ if __name__=="__main__":
         # ********************************************************
         
     # make individual long cluster alignments
-    msg = '[' + time.strftime('%d %b %H:%m:%S') + ']'
+    msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Aligning long sequence clusters\n' 
     print(msg)
     
@@ -1877,7 +1877,7 @@ if __name__=="__main__":
         # add unclustered fragments
         if mArgs.keepOrphans and checkPresenceOfFile('frag.noClusters.fas'):
                 # create alignment by merging cluster alignments
-                msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+                msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
                 msg += ' Adding orphan fragments to final alignment\n' 
                 print(msg)
 
@@ -1885,7 +1885,7 @@ if __name__=="__main__":
         else:
             copyFile('final.noOrphans.aln','final.noBadSeq.aln')
  
-        msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+        msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
         msg += ' <final.noBadSeq.aln> file created\n' 
         print(msg)
 
@@ -1900,11 +1900,11 @@ if __name__=="__main__":
     
     
         if checkPresenceOfFile(mArgs.outFile):
-            msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+            msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
             msg += ' Final alignment written in <%s>\n' % mArgs.outFile
             print(msg)
         else:
-            msg = '\n[' + time.strftime('%d %b %H:%m:%S') + ']'
+            msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
             msg += ' Pipelign could not write the file <%s>\n' % mArgs.outFile
             msg += '\tSomething went wrong. Please check the zipped output directory.\n' 
             print(msg)
