@@ -1194,7 +1194,7 @@ def mergeConsensus(numClusters,oName,tp,mArgs,log,cDir,tFileName,zName):
     for i in range(numClusters):
         aName = tp + '.' + str(i) + '.aln'
         aln = AlignIO.read(open(aName),'fasta')
-        con = AlignInfo.SummaryInfo(aln).dumb_consensus()
+        con = AlignInfo.SummaryInfo(aln).dumb_consensus(threshold=0.5, ambiguous='N')
         
         st += '>' + aName + '\n'
         st += str(con) + '\n'
@@ -1335,7 +1335,7 @@ def runBlast(log):
     elif mArgs.alphabet == 'aa':
         cStr += 'blastp '
       
-    cStr += '-query frag.fas -db pipelign.blastdb -max_target_seqs 1 -outfmt 6 -evalue 20'
+    cStr += '-query frag.fas -db pipelign.blastdb -max_target_seqs 1 -outfmt 6 -evalue 0.05'
     #cStr += '-evalue 20 | sort -u -k1,2'
   
     bo = open('frag.blast.txt','w')    
@@ -1386,10 +1386,10 @@ def searchHMMdb(log,thread,alpha,res,cDir,tName,zName):
   
     # generate the command for HMM search
     if alpha == 'dna' or alpha == 'rna':
-        cStr = 'nhmmscan --cpu %d --tblout %s --noali pipelign.hmm frag.noBlast.fas' % (thread,res)
+        cStr = 'nhmmscan --cpu %d --tblout %s --noali  -E 0.05 pipelign.hmm frag.noBlast.fas' % (thread,res)
       
     elif alpha == 'aa':
-        cStr = 'hmmscan --cpu %d --tblout %s --noali pipelign.hmm frag.noBlast.fas' % (thread,res)
+        cStr = 'hmmscan --cpu %d --tblout %s --noali -E 0.05 pipelign.hmm frag.noBlast.fas' % (thread,res)
     
     msg = '[' + time.strftime('%d %b %H:%M:%S') + ']'
     msg += ' Searching HMM database to assign clusters to remaining fragments\n'
