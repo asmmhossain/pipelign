@@ -34,7 +34,11 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
 # Install GNU parallel
-RUN apt-get install parallel
+RUN curl -O http://ftp.gnu.org/gnu/parallel/parallel-20170122.tar.bz2 && \
+  bzip2 -d parallel-20170122.tar.bz2 && \
+  tar -xvf parallel-20170122.tar && \
+  cd parallel-20170122 && \
+  ./configure && make && make install
 
 # Install the recent pip release
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
