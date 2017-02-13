@@ -40,7 +40,9 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
 	# Install numpy && \
 	pip3 install numpy && \
 	# Install Biopython && \
-	pip3 install biopython
+	pip3 install biopython && \
+	# Install joblib && \
+	pip3 install joblib
 
 # Install CD-HIT
 RUN cd /home/docker/programs && \
