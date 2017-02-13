@@ -1747,6 +1747,11 @@ def excludeClustersFromalignment(oAln,xAln):
     inStr = inStr.strip().split()
     #print(inStr)
     
+    if len(inStr) < 1:
+        print('No cluster selected for exclusion')
+        copyFile(oAln,xAln)
+        return
+    
     exList = list() # contains list of sequences for exclusion
     
     # read in the long cluster list file to list sequences for exclusion

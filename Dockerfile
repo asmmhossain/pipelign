@@ -33,6 +33,9 @@ RUN apt-get update -qq && \
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
+# Install GNU parallel
+RUN apt-get install parallel
+
 # Install the recent pip release
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
 	python3 get-pip.py && \
