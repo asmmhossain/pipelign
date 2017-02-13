@@ -44,7 +44,8 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
 	# Install joblib && \
 	pip3 install joblib && \
 	# Install ETE3 && \
-	pip3 install --upgrade ete3
+	pip3 install --upgrade ete3 && \
+	pip3 install scipy
 
 # Install CD-HIT
 RUN cd /home/docker/programs && \
