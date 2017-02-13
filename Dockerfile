@@ -1,5 +1,5 @@
 # Use phusion/baseimage as base image
-FROM phusion/baseimage:0.9.18
+FROM phusion/baseimage:0.9.19
 
 # Set environment variables the phusion way
 RUN echo en_US.UTF-8 > /etc/container_environment/LANGUAGE
@@ -42,7 +42,9 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
 	# Install Biopython && \
 	pip3 install biopython && \
 	# Install joblib && \
-	pip3 install joblib
+	pip3 install joblib && \
+	# Install ETE3 && \
+	pip3 install --upgrade ete3
 
 # Install CD-HIT
 RUN cd /home/docker/programs && \
