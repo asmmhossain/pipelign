@@ -43,7 +43,7 @@ RUN curl -O http://ftp.gnu.org/gnu/parallel/parallel-20170122.tar.bz2 && \
   rm -r parallel-20170122
   
 # Install BLAST+
-RUN curl ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.6.0+-src.tar.gz && \
+RUN curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.6.0+-src.tar.gz && \
   tar xvzf ncbi-blast-2.6.0+-src.tar.gz && \
   cd ncbi-blast-2.6.0+-src && \
   ./configure && \
