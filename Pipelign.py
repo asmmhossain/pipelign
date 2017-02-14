@@ -1983,6 +1983,28 @@ if __name__=="__main__":
     if mArgs.stage == 1:
         longSeqClusters(mArgs.tempDirPath,cDir,zName,tDirName,tFileName)
 
+        # No path provided for temporary directory
+        if mArgs.tempDirPath is None:
+            try:
+                wName = cDir + '/' + zName 
+                shutil.copytree(tDirName,wName) 
+                os.chmod(wName,0o777)
+            except OSError as e:
+                print(e)
+                cZip(cDir,tFileName,zName)
+
+        if mArgs.tempDirPath:
+            os.chdir(cDir)
+            if os.path.exists(zName):
+                os.chmod(zName,0o777)    
+
+        msg = '\nAlignment files and HMMs can be found in <%s>\n' % zName
+        msg += '\tLong sequence alignments have names <long.xx.aln>\n'
+        msg += '\tHMM file written in <long.xx.hmm>\n'
+        msg += '\tHMM database written in <pipelign.hmm>\n'
+        msg += '\nThank you for using Pipelign\n'
+        sys.exit(msg)
+
     
     #***************
     # create alignment from only long sequences
@@ -2033,9 +2055,15 @@ if __name__=="__main__":
             try:
                 wName = cDir + '/' + zName 
                 shutil.copytree(tDirName,wName) 
+                os.chmod(wName,0o777)
             except OSError as e:
                 print(e)
                 cZip(cDir,tFileName,zName)
+        
+        if mArgs.tempDirPath:
+            os.chdir(cDir)
+            if os.path.exists(zName):
+                os.chmod(zName,0o777)    
 
         msg = '\nAlignment files and HMMs can be found in <%s>\n' % zName
         msg += '\tLong sequence alignments have names <long.xx.aln>\n'
