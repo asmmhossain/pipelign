@@ -16,6 +16,7 @@ Dependencies:
 - [IQ-TREE](http://www.cibiv.at/software/iqtree/): for generating a phylogenetic tree of representative 'long' sequences
 - [MAFFT](http://mafft.cbrc.jp/alignment/software/): for alignment
 - [HMMER](http://hmmer.org/): for matching sequence fragments to clusters
+- [BLAST](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download): for matching sequence fragments to clusters
 
 ## Docker
 

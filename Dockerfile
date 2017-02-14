@@ -40,12 +40,13 @@ RUN curl -O http://ftp.gnu.org/gnu/parallel/parallel-20170122.tar.bz2 && \
   cd parallel-20170122 && \
   ./configure && make && make install && \
   cd ../ && \
-  rm -r parallel-20170122
+  rm -r parallel-20170122.tar
   
 # Install BLAST+
 RUN wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST/ncbi-blast-2.6.0+-x64-linux.tar.gz && \
-  tar xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz && \
-  cp ../ncbi-blast-2.6.0+/bin/* ../bin/ 
+  tar -xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz && \
+  cp ../ncbi-blast-2.6.0+/bin/* ../bin/ && \
+  rm ../ncbi-blast-2.6.0+-x64-linux.tar.gz
   
 # Install the recent pip release
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
