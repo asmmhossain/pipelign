@@ -2012,7 +2012,10 @@ if __name__=="__main__":
             msg += '\tSomething went wrong. Please check the zipped output directory.\n' 
             print(msg)
         
-    
+        # give permission to output alignment to user; used mainly for Docker
+        if checkPresenceOfFile(mArgs.outFile):
+            os.chmod(mArgs.outFile, 0o777)
+        
         sys.exit('\nThank you for using Pipelign.\n')
 
     #***************
