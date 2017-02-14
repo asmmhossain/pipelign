@@ -2015,6 +2015,11 @@ if __name__=="__main__":
         # give permission to output alignment to user; used mainly for Docker
         if checkPresenceOfFile(mArgs.outFile):
             os.chmod(mArgs.outFile, 0o777)
+            
+        if mArgs.tempDirPath:
+            os.chdir(cDir)
+            if os.path.exists(zName):
+                os.chmod(zName,0o777)    
         
         sys.exit('\nThank you for using Pipelign.\n')
 
@@ -2144,6 +2149,18 @@ if __name__=="__main__":
             msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
             msg += ' Final alignment written in <%s>\n' % mArgs.outFile
             print(msg)
+            
+            # give permission to output file; for docker
+            os.chmod(mArgs.outFile,0o777)
+            
+            # change to parent directory
+            os.chdir(cDir)
+            
+            # give permission to temporary directory
+            if mArgs.tempDirPath:
+                if os.path.exists(zName):
+                    os.chmod(zName,0o777)
+                 
         else:
             msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
             msg += ' Pipelign could not write the file <%s>\n' % mArgs.outFile
