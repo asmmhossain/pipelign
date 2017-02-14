@@ -2131,8 +2131,9 @@ if __name__=="__main__":
         # remove all the sequences from the <final.all.aln> that belong to the clusters
         if mArgs.excludeClusters:
             excludeClustersFromalignment('final.all.aln','final.aln')
-            
-       
+        else:
+            copyFile('final.all.aln','final.aln')    
+
         if checkPresenceOfFile('final.aln'):
             copyFile('final.aln',mArgs.outFile)
         
@@ -2143,8 +2144,9 @@ if __name__=="__main__":
         else:
             msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
             msg += ' Pipelign could not write the file <%s>\n' % mArgs.outFile
-            msg += '\tSomething went wrong. Please check the zipped output directory.\n' 
+            msg += '\tSomething went wrong. Please check the output directory.\n' 
             print(msg)
+            cZip(cDir,tFileName,zName)
         
     
         sys.exit('\nThank you for using Pipelign.\n')

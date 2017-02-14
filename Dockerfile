@@ -43,14 +43,10 @@ RUN curl -O http://ftp.gnu.org/gnu/parallel/parallel-20170122.tar.bz2 && \
   rm -r parallel-20170122
   
 # Install BLAST+
-RUN curl -O ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.6.0+-src.tar.gz && \
-  tar xvzf ncbi-blast-2.6.0+-src.tar.gz && \
-  cd ncbi-blast-2.6.0+-src && \
-  ./configure && \
-  cd ReleaseMT/build && \
-  export PATH=$PATH:/data/ncbi-blast-2.6.0+-src/c++/ReleaseMT/bin && 
-    
-
+RUN wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST/ncbi-blast-2.6.0+-x64-linux.tar.gz && \
+  tar xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz && \
+  cp ../ncbi-blast-2.6.0+/bin/* ../bin/ 
+  
 # Install the recent pip release
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
 	python3 get-pip.py && \
@@ -113,15 +109,10 @@ RUN cd /home/docker/programs && \
 	cd pipelign && \
 	chmod +x ./Pipelign.py && \
 	cp ./Pipelign.py /usr/local/bin && \
-	#chmod +x pipelignRscripts/freqsLong.R && \
-	#cp pipelignRscripts/freqsLong.R /usr/local/bin && \
-	#chmod +x pipelignRscripts/freqsLongFrags.R && \
-	#cp pipelignRscripts/freqsLongFrags.R /usr/local/bin && \
-	#chmod +x pipelignRscripts/lengthDistribution.R && \
-	#cp pipelignRscripts/lengthDistribution.R /usr/local/bin && \	
 	rm -rf /home/docker/programs/pipelign
 
-
+  
+  
 # Clean up APT when done.
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
