@@ -67,14 +67,14 @@ def iterThreshold(x):
 def runType(x):
     x = x.upper()
     if x not in ['J','G']:
-        raise argparse.ArgumentTypeError('%r must be either J or G' % (x,))
+        raise argparse.ArgumentTypeError('value of -r must be either J or G')
     return x
 
 #***************************************
 def mergeType(x):
     x = x.upper()
-    if x not in ['F','P','C']:
-        raise argparse.ArgumentTypeError('%r must be either F, P or C' % (x,))
+    if x not in ['P','C']:
+        raise argparse.ArgumentTypeError('value of -e must be either P or C')
     return x
 
 #***************************************
@@ -230,7 +230,7 @@ def makeTempDir(tDir):
   
     else: # user provided path using -d 
         if os.path.exists(tDir):
-            tempDir = tDir + '/' + zName
+            tempDir = os.path.join(tDir, zName)
             tDirName = tempDir
             try:
                 os.mkdir(tempDir)
@@ -421,22 +421,35 @@ def runCDHIT(longName,alphabet,per,thread,cDir,tName,zName):
     # open log file
     lh = open('cdhit.log','a') 
     
-    # choose word size for cd-hit
-    if per >= 0.7:
-        ws = 5
-    elif per >= 0.6:
-        ws = 4
-    elif per >= 0.5:
-        ws = 3
-    else:
-        ws = 2
         
     # argument string for CD-HIT
     if alphabet == 'dna' or alphabet == 'rna':
+        # choose word size for cd-hit-est
+        if per >= 0.9:
+            ws = 8
+        elif per >= 0.88:
+            ws = 7
+        elif per >= 0.85:
+            ws = 6
+        elif per >= 0.80:
+            ws = 5
+        else:
+            ws = 4
+    
         cl = ['cd-hit-est','-c', str(per), '-n', str(ws), '-i', longName, '-o', 'grp', '-d', '0', '-T', str(thread)]
         msg += ' CD-HIT-EST started\n'
 
     elif alphabet == 'aa':
+        # choose word size for cd-hit
+        if per >= 0.7:
+            ws = 5
+        elif per >= 0.6:
+            ws = 4
+        elif per >= 0.5:
+            ws = 3
+        else:
+            ws = 2
+    
         cl = ['cd-hit','-c', str(per), '-n', str(ws), '-i', longName, '-o', 'grp', '-d', '0', '-T', str(thread)] 
         msg += ' CD-HIT started\n'
 
@@ -591,9 +604,9 @@ def makeIQTree(alnFile,thread,cDir,tName,zName,alpha):
     #print('\nCreating IQ-TREE from %s' % alnFile)
   
     if alpha == 'dna' or alpha == 'rna':
-        cl = ['iqtree-omp', '-s', alnFile, '-m', 'GTR+R4', '-nt', str(thread)]
+        cl = ['iqtree', '-s', alnFile, '-m', 'GTR+R4', '-nt', str(thread)]
     elif alpha == 'aa':
-        cl = ['iqtree-omp', '-s', alnFile, '-m', 'WAG', '-nt', str(thread)]
+        cl = ['iqtree', '-s', alnFile, '-m', 'WAG', '-nt', str(thread)]
   
     try:
         subprocess.check_call(cl,stdout=lh,stderr=lh)
@@ -1794,7 +1807,188 @@ def excludeClustersFromalignment(oAln,xAln):
         SeqIO.write(aSeq,xAln,'fasta')         
 
 #************************************************************************
+# this is to check duplicate values for the same argument
+class UniqueStore(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string):
+        if getattr(namespace, self.dest, self.default) is not None:
+            print(option_string+values)
+            parser.error(option_string + " appears several times.")
+        setattr(namespace, self.dest, values)
 
+
+#************************************************************************
+
+def validateLengthThreshold(parser,lenThr):
+    '''
+    raises exception if length threshold is given multiple times 
+    if no value is given default value of 0.7 is returned
+
+    '''
+
+    if lenThr == None:
+        print("== No value given for '-t', using the default value: 0.7")
+        return 0.7
+    elif len(lenThr) == 1:
+        x = lenThr[0]
+        if x < 0.5 or x > 1.0:
+                parser.error('value given for -t is not in the range [0.5, 1.0]')
+        return x
+    else:
+        parser.error('-t appears several times.')
+
+#************************************************************************
+
+def validateAlphabet(parser,alphabet):
+    '''
+    raises exception if alphabet is given multiple times 
+    if no value is given DNA is used by default
+
+    '''
+    if alphabet == None:
+        print("== No value given for '-a', using the default sequence type: 'dna'")
+        return 'dna'
+    elif len(alphabet) == 1:
+        return alphabet[0]
+    else:
+        parser.error('-a appears several times.')
+
+#************************************************************************        
+
+def validateRunType(parser,run):
+    '''
+    raises exception if run type is given multiple times 
+    if no value is given, GNU parallel is used by default
+
+    '''
+    if run == None:
+        print("== No value given for '-r', using (G)NU parallel")
+        return 'G'
+    elif len(run) == 1:
+        #x = run[0].upper()
+        #if x not in ['J','G']:
+            #raise argparse.ArgumentTypeError('value of -r must be either J or G')
+        #return x
+        return run[0]
+        
+    else:
+        parser.error('-r appears several times.')
+
+#************************************************************************        
+
+def validateMergeType(parser,merge):
+    '''
+    raises exception if merge type is given multiple times 
+    if no value is given, merge is done parallelly by default
+
+    '''
+    if merge == None:
+        print("== No value given for '-e', using default value: P")
+        return 'P'
+    elif len(merge) == 1:
+        #x = run[0].upper()
+        #if x not in ['J','G']:
+            #raise argparse.ArgumentTypeError('value of -r must be either J or G')
+        #return x
+        return merge[0]
+        
+    else:
+        parser.error('-r appears several times.')
+
+#************************************************************************        
+
+def validatePercentageSimilarity(parser,simPer,alphabet):
+    '''
+    raises exception if percentage similarity threshold is given multiple times 
+    if no value is given default value of 0.8 is returned
+
+    '''
+
+    if simPer == None:
+        print("== No value given for '-p', using the default value: 0.8")
+        return 0.8
+    elif len(simPer) == 1:
+        x = float(simPer[0])
+        if alphabet == 'aa':
+            if x < 0.4 or x > 1.0:
+                parser.error('value given for -p is not in the range [0.4, 1.0] for protein sequences')
+            return x
+        else:
+            if x < 0.8 or x > 1.0:
+                parser.error('value given for -p is not in the range [0.8, 1.0] for nucelotide sequences')
+            return x
+        
+    else:
+        parser.error('-p appears several times.')
+
+#************************************************************************        
+
+def validateAmbigPercentage(parser,ambigPer):
+    '''
+    raises exception if percentage ambiguity threshold is given multiple times 
+    if no value is given default value of 0.1 is returned
+
+    '''
+
+    if ambigPer == None:
+        print("== No value given for '-w', using the default value: 0.1")
+        return 0.1
+    elif len(ambigPer) == 1:
+        x = float(ambigPer[0])
+        if x < 0.0 or x > 1.0:
+                parser.error('value given for -w is not in the range [0.0, 1.0]')
+        return x
+    else:
+        parser.error('-p appears several times.')
+#************************************************************************
+
+def validateThread(parser,threads):
+    '''
+    checks number of available threads and sets value
+    '''
+    if threads == None:
+        print("== No value given for '-q', running on a single CPU")
+        return 1
+    elif len(threads) == 1:
+        numThreads = os.cpu_count()
+        #print(numThreads,threads)
+        if numThreads == None or threads[0] == 0:
+            return 1
+        elif numThreads >= threads[0]:
+            #print(threads[0])
+            return threads[0]
+        elif numThreads < threads[0]:
+            return numThreads
+    else:
+        parser.error('-q appears several times.')
+
+
+#************************************************************************
+def validateIterateMerge(parser,mergeIter):
+    '''
+    sets number of iterations for merging cluster alignments
+    '''
+    if mergeIter == None:
+        print("== No value given for '-m', running only 1 iterations during merge")
+        return 1
+    elif len(mergeIter) == 1:
+        return mergeIter[0]
+    else:
+        parser.error('-m appears several times')
+
+#************************************************************************
+def validateIterateLong(parser,longIter):
+    '''
+    sets number of iterations for merging cluster alignments
+    '''
+    if longIter == None:
+        print("== No value given for '-s', running only 1 iterations during aligning long sequence clusters")
+        return 1
+    elif len(longIter) == 1:
+        return longIter[0]
+    else:
+        parser.error('-s appears several times')
+
+#************************************************************************
 def getArguments():
     '''
         Parses all the command line arguments from the user
@@ -1802,23 +1996,24 @@ def getArguments():
   
     parser = argparse.ArgumentParser(description="Pipelign: creates multiple sequence alignment from FASTA formatted sequence file", formatter_class=argparse.RawTextHelpFormatter)
     #formatter_class=argparse.RawDescriptionHelpFormatter)  
-    parser.add_argument('-i', '--inFile', required=True, help="Input sequence file in FASTA format")
-    parser.add_argument('-o', '--outFile', required=True, help="FASTA formatted output alignment file")
-    parser.add_argument('-t', '--lenThr', type=lengthThreshold, help="Length threshold for full sequences (default: 0.9)", default=0.9)
-    parser.add_argument('-c', '--code', type=int, help="Genetic code for translation (default: 1)",default=1, choices=[1,2,3,4,5,6,9,10,11,12,13,14,16,21,22,23,24,25])
-    parser.add_argument('-a', '--alphabet', required=True, help='Input sequences can be dna/rna/aa (default: dna)', choices=['dna','aa','rna'], default='dna')
+    parser.add_argument('-i', '--inFile', required=True, help="Input sequence file in FASTA format",action=UniqueStore)
+    parser.add_argument('-o', '--outFile', required=True, help="FASTA formatted output alignment file",action=UniqueStore)
+    #parser.add_argument('-t', '--lenThr', type=lengthThreshold, help="Length threshold for full sequences (default: 0.9)",default=0.9,action='append')
+    parser.add_argument('-t', '--lenThr', type=float, help="Length threshold for full sequences (default: 0.7)",action='append')
+    #parser.add_argument('-c', '--code', type=int, help="Genetic code for translation (default: 1)",default=1, choices=[1,2,3,4,5,6,9,10,11,12,13,14,16,21,22,23,24,25])
+    parser.add_argument('-a', '--alphabet', help='Input sequences can be dna/rna/aa (default: dna)', choices=['dna','aa','rna'], action='append')
     parser.add_argument('-f', '--keepOrphans', help='Add fragments without clusters', action="store_true")
     parser.add_argument('-b', '--keepBadSeqs', help='Add long sequences with too many ambiguous residues', action="store_true")    
     parser.add_argument('-z', '--mZip', help='Create zipped temporary files', action="store_true")
-    parser.add_argument('-p', '--simPer', type=simThreshold, help="Percent sequence similarity for clustering (default: 0.8)", default=0.8)
-    parser.add_argument('-r', '--run', type=runType, help="Run either (J)oblib/(G)NU parallel version (default: G)", default='G')    
-    parser.add_argument('-e', '--merge', type=mergeType, help="Merge using (P)arallel/(C)onsensus strategy  (default: P)", default='P')
-    parser.add_argument('-q', '--thread', nargs='?', const=1, type=int, help="Number of CPU/threads to use (default: 1)", default=1)
-    parser.add_argument('-s', '--mIterateLong', type=iterThreshold, help="Number of iterations to refine long alignments (default: 1)", default=1)
-    parser.add_argument('-m', '--mIterateMerge', type=iterThreshold, help="Number of iterations to refine merged alignment (default: 1)", default=1)
+    parser.add_argument('-p', '--simPer', type=float,help="Percent sequence similarity for clustering (default: 0.8)", action='append')
+    parser.add_argument('-r', '--run', help="Run either (J)oblib/(G)NU parallel version (default: G)", choices=['J','G'],action='append')    
+    parser.add_argument('-e', '--merge', help="Merge using (P)arallel/(C)onsensus strategy  (default: P)", choices=['P','C'],action='append')
+    parser.add_argument('-q', '--thread', type=int, help="Number of CPU/threads to use (default: 1)", action='append')
+    parser.add_argument('-s', '--mIterateLong', type=int, help="Number of iterations to refine long alignments (default: 1)", action='append')
+    parser.add_argument('-m', '--mIterateMerge', type=int, help="Number of iterations to refine merged alignment (default: 1)", action='append')
     parser.add_argument('-d', '--tempDirPath', required=False, help="Path for temporary directory",default=None)
     #parser.add_argument('-l', '--longSeqsOnly', help='Only align long sequences', action="store_true")
-    parser.add_argument('-w', '--ambigPer', type=lengthThreshold, help="Proportion of ambiguous characters allowed in the long sequences (default: 0.01)", default=0.01)  
+    parser.add_argument('-w', '--ambigPer', type=float, help="Proportion of ambiguous characters allowed in the long sequences (default: 0.1)", action='append')  
     parser.add_argument('-n', '--stage', type=int,default=5, choices=[1,2,3,4,5,6],
         help=textwrap.dedent('''\
         1  Make cluster alignments and HMM of long sequences
@@ -1832,6 +2027,22 @@ def getArguments():
   
     args = parser.parse_args()
 
+    # check arguments for validation
+
+    args.lenThr = validateLengthThreshold(parser,args.lenThr)
+    args.alphabet = validateAlphabet(parser,args.alphabet)
+    args.simPer = validatePercentageSimilarity(parser,args.simPer,args.alphabet)
+    args.run = validateRunType(parser,args.run)
+    args.merge = validateMergeType(parser,args.merge)
+    args.thread = validateThread(parser,args.thread)
+    args.mIterateLong = validateIterateLong(parser,args.mIterateLong)
+    args.mIterateMerge = validateIterateMerge(parser,args.mIterateMerge)
+    args.ambigPer = validateAmbigPercentage(parser,args.ambigPer)
+    
+    #print(args.thread)
+    #sys.exit(args.mIterateMerge)
+    
+
     return args  
   
 #****************************************************************************
@@ -1840,12 +2051,14 @@ if __name__=="__main__":
   
     # get all the command line arguments
     args = getArguments()
+
+    cDir = os.getcwd() # save path for the current working directory
     
     mArgs = MyStruct(
         inFile = args.inFile,
-        outFile = os.getcwd() + '/' + args.outFile,
+        outFile = os.path.join(cDir, args.outFile),
         lenThr = args.lenThr,
-        gCode = args.code,
+        #gCode = args.code,
         alphabet = args.alphabet,
         keepOrphans = args.keepOrphans,
         keepBadSeqs = args.keepBadSeqs,
@@ -1865,6 +2078,7 @@ if __name__=="__main__":
         stage = args.stage,
         excludeClusters = args.excludeClusters)
 
+    
     # check whether input file exists
     if not checkPresenceOfFile(mArgs.inFile):
         msg = '\n==============================='
@@ -1875,7 +2089,6 @@ if __name__=="__main__":
         sys.exit(msg)
 
     # Pipeline process starts here
-    cDir = os.getcwd() # save path for the current working directory
     tFileName = 'input.fas'  # input file in temporary directory
     deFileName = 'input.dealign.fas' # dealigned input file
 
@@ -1888,7 +2101,7 @@ if __name__=="__main__":
     tempDir, tDirName = makeTempDir(mArgs.tempDirPath)
 
     # copy input file inside the temporary directory
-    dName = tDirName + '/' + tFileName
+    dName = os.path.join(tDirName, tFileName)
     copyFile(mArgs.inFile,dName)
   
     msg = '\n[' + time.strftime('%d %b %H:%M:%S') + ']'
