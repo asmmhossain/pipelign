@@ -1,37 +1,172 @@
-# Pipelign
+pipelign
+========
 
-Semi-automated computational pipeline for aligning virus sequences.
+[![GitHub license](https://img.shields.io/github/license/asmmhossain/pipelign.svg)](./LICENSE)
+[![Requires.io](https://img.shields.io/requires/github/asmmhossain/pipelign.svg)](https://requires.io/github/asmmhossain/pipelign/requirements/)
+[![Travis](https://img.shields.io/travis/asmmhossain/pipelign.svg)](https://travis-ci.org/asmmhossain/pipelign)
 
-``Pipelign`` can be downloade from github using the following command:
+Built from [makenew/python-package](https://github.com/makenew/python-package).
 
-``git clone https://github.com/asmmhossain/pipelign``
+Description
+-----------
 
-Typing ``python3 Pipelign.py -h`` will give a short usage information
+A pipeline for automated multiple sequence alignment, particularly of viral sequences.
 
-Dependencies:
+Citation
+--------
 
-- [Python 3](https://www.python.org/)
-- [BioPython](http://biopython.org/wiki/Main_Page): for sequence processing
-- [CD-HIT](http://weizhongli-lab.org/cd-hit/): for clustering 'long' sequences
-- [IQ-TREE](http://www.cibiv.at/software/iqtree/): for generating a phylogenetic tree of representative 'long' sequences
-- [MAFFT](http://mafft.cbrc.jp/alignment/software/): for alignment
-- [HMMER](http://hmmer.org/): for matching sequence fragments to clusters
-- [BLAST](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download): for matching sequence fragments to clusters
+Pipelign: an alignment pipeline for viral sequences. A.S.Md.M. Hossain and S.D.W.Frost, in preparation.
 
-## Docker
+Usage
+-----
 
-Docker repository for ``Pipelign`` is hosted on [asmmhossain/Pipelign](https://hub.docker.com/r/asmmhossain/pipelign/). Anyone having [Docker](https://www.docker.com/) installed can get ``Pipelign`` using the command:
+```sh
+usage: pipelign [-h] -i INFILE -o OUTFILE [-t LENTHR] [-a {dna,aa,rna}] [-f]
+                [-b] [-z] [-p SIMPER] [-r {J,G}] [-e {P,C}] [-q THREAD]
+                [-s MITERATELONG] [-m MITERATEMERGE] [-d TEMPDIRPATH]
+                [-w AMBIGPER] [-n {1,2,3,4,5,6}] [-x]
 
-``docker pull asmmhossain/pipelign``
+Pipelign: creates multiple sequence alignment from FASTA formatted sequence file
 
-The following command will show the usage information and command line argument options for running ``Pipelign`` using docker:
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INFILE, --inFile INFILE
+                        Input sequence file in FASTA format
+  -o OUTFILE, --outFile OUTFILE
+                        FASTA formatted output alignment file
+  -t LENTHR, --lenThr LENTHR
+                        Length threshold for full sequences (default: 0.7)
+  -a {dna,aa,rna}, --alphabet {dna,aa,rna}
+                        Input sequences can be dna/rna/aa (default: dna)
+  -f, --keepOrphans     Add fragments without clusters
+  -b, --keepBadSeqs     Add long sequences with too many ambiguous residues
+  -z, --mZip            Create zipped temporary files
+  -p SIMPER, --simPer SIMPER
+                        Percent sequence similarity for clustering (default: 0.8)
+  -r {J,G}, --run {J,G}
+                        Run either (J)oblib/(G)NU parallel version (default: G)
+  -e {P,C}, --merge {P,C}
+                        Merge using (P)arallel/(C)onsensus strategy  (default: P)
+  -q THREAD, --thread THREAD
+                        Number of CPU/threads to use (default: 1)
+  -s MITERATELONG, --mIterateLong MITERATELONG
+                        Number of iterations to refine long alignments (default: 1)
+  -m MITERATEMERGE, --mIterateMerge MITERATEMERGE
+                        Number of iterations to refine merged alignment (default: 1)
+  -d TEMPDIRPATH, --tempDirPath TEMPDIRPATH
+                        Path for temporary directory
+  -w AMBIGPER, --ambigPer AMBIGPER
+                        Proportion of ambiguous characters allowed in the long sequences (default: 0.1)
+  -n {1,2,3,4,5,6}, --stage {1,2,3,4,5,6}
+                        1  Make cluster alignments and HMM of long sequences
+                        2  Align long sequences only
+                        3  Assign fragments to clusters
+                        4  Make cluster alignments with fragments
+                        5  Align all sequences
+  -x, --excludeClusters
+                        Exclude clusters from final alignment
+```
 
-``docker run --rm asmmhossain/pipelign Pipelign.py -h``
+In addition, a utility to convert GenBank files into plain FASTA files with the accession as header is included as `gb2fas`.
 
-Then ``Pipelign`` can be run to produce alignments using desired options:
+Dependencies
+------------
 
-``docker run -i -t --rm -v $(pwd):/data -w /data asmmhossain/pipelign Pipelign.py [options]``
+- MAFFT
+- HMMER3
+- CD-HIT
+- IQTREE
 
-Please make sure the sequence file resides in the current directory from where the docker container is launched. Output file will be stored in the current directory.
+These can be installed e.g. using conda from the bioconda channel:
 
+    $ conda install mafft hmmer cd-hit iqtree -c bioconda
 
+Installation with pip
+---------------------
+
+Install it directly using pip with
+
+    $ git clone https://github.com/asmmhossain/pipelign
+    $ cd pipelign
+    $ pip install .
+
+Installation with setuptools
+----------------------------
+
+    $ python3 setup.py install
+
+Development and Testing
+-----------------------
+
+### Source Code
+
+The [pipelign source](https://github.com/asmmhossain/pipelign) is hosted
+on GitHub. Clone the project with
+
+    $ git clone https://github.com/asmmhossain/pipelign.git
+
+### Requirements
+
+You will need [Python 3](https://www.python.org/) with
+[pip](https://pip.pypa.io/).
+
+Install the development dependencies with
+
+    $ pip install -r requirements.devel.txt
+
+### Building a conda package
+
+Installation with conda
+-----------------------
+
+First create an environment.
+
+    $ conda create -n pipelign python=3
+
+Activate the environment.
+
+    $ source activate pipelign
+
+Install conda-build:
+
+    $ conda install conda-build
+
+Run conda.
+
+    $ conda-build . -c bioconda
+
+### Tests
+
+Lint code with
+
+    $ python setup.py lint
+
+Run tests with
+
+    $ python setup.py test
+
+Contributing
+------------
+
+Please submit and comment on bug reports and feature requests.
+
+To submit a patch:
+
+1.  Fork it (<https://github.com/asmmhossain/pipelign/fork>).
+2.  Create your feature branch (`git checkout -b my-new-feature`).
+3.  Make changes. Write and run tests.
+4.  Commit your changes (`git commit -am 'Add some feature'`).
+5.  Push to the branch (`git push origin my-new-feature`).
+6.  Create a new Pull Request.
+
+License
+-------
+
+This Python package is licensed under the MIT license.
+
+Warranty
+--------
+
+This software is provided \"as is\" and without any express or implied
+warranties, including, without limitation, the implied warranties of
+merchantibility and fitness for a particular purpose.
