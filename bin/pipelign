@@ -208,8 +208,8 @@ if __name__=="__main__":
             if os.path.exists(zName):
                 os.chmod(zName,0o777)
         '''
-        msg = '\nThank you for using Pipelign\n'
-        sys.exit(msg)
+        print('\nThank you for using Pipelign.\n')
+        sys.exit(0)
 
 
     #***************
@@ -251,7 +251,8 @@ if __name__=="__main__":
                 os.chmod(zName,0o777)
         '''
 
-        sys.exit('\nThank you for using Pipelign.\n')
+        print('\nThank you for using Pipelign.\n')
+        sys.exit(0)
 
     #***************
     # Assigns clusters to fragments based on BLAST and HMM search
@@ -269,9 +270,8 @@ if __name__=="__main__":
 
             msg += '\tCluster files for fragments are written in <frag.xx.fas>\n'
 
-        msg = '\nThank you for using Pipelign\n'
-
-        sys.exit(msg)
+        print('\nThank you for using Pipelign.\n')
+        sys.exit(0)
 
 
     #***************
@@ -303,8 +303,8 @@ if __name__=="__main__":
                 oh.write(msg)
 
 
-        msg = '\nThank you for using Pipelign\n'
-        sys.exit(msg)
+        print('\nThank you for using Pipelign.\n')
+        sys.exit(0)
 
 
     #************
@@ -430,7 +430,9 @@ if __name__=="__main__":
             msg += ' Pipelign could not write the file <%s>\n' % mArgs.outFile
             msg += '\tSomething went wrong. Please check the output directory.\n'
             print(msg)
+            sys.exit(1)
             #cZip(cDir,tFileName,zName)
 
 
-        sys.exit('\nThank you for using Pipelign.\n')
+        print('\nThank you for using Pipelign.\n')
+        sys.exit(0)
