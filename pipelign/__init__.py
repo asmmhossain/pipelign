@@ -981,7 +981,8 @@ def longSeqClusters(tempDirPath,cDir,tDirName,tFileName):
     msg += '\tHMM database written in <pipelign.hmm>\n'
     print(msg)
 
-    sys.exit('\nThank you for using Pipelign.\n')
+    print('\nThank you for using Pipelign.\n')
+    sys.exit(0)
 
 #***********************************************************************
 
@@ -1367,7 +1368,8 @@ def longSeqAlignmentConsensus(numClusters,mArgs):
         print(msg)
 
     '''
-    #sys.exit('\nThank you for using Pipelign.\n')
+    # print('\nThank you for using Pipelign.\n')
+    # sys.exit(0)
 
 #***********************************************************************
 def longSeqAlignmentParallel(numClusters,mArgs):
