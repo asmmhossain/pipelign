@@ -78,15 +78,18 @@ Dependencies
 - HMMER3
 - CD-HIT
 - IQTREE
+- BLAST
 
-These can be installed e.g. using conda from the bioconda channel:
+These can be installed e.g. using conda from the bioconda channel. `pipelign` has been tested with Python 3.10.
 
-    $ conda install mafft hmmer cd-hit iqtree -c bioconda
+    $ conda create -n pipelign -c bioconda -c conda-forge python==3.10
+    $ conda activate pipelign
+    $ conda install joblib six parallel blast iqtree mafft cd-hit hmmer -c bioconda -c conda-forge
 
 Installation with pip
 ---------------------
 
-Install it directly using pip with
+Install it directly using pip (using the above environment) with
 
     $ git clone https://github.com/asmmhossain/pipelign
     $ cd pipelign
@@ -123,7 +126,7 @@ Installation with conda
 
 First create an environment.
 
-    $ conda create -n pipelign python=3
+    $ conda create -n pipelign python=3.10
 
 Activate the environment.
 
